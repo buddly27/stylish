@@ -24,8 +24,10 @@ with open(
 
 # Compute dependencies.
 INSTALL_REQUIRES = [
-    "mlog >= 0.0.6, < 1",
-    "tensorflow >= 1, < 2"
+    "tensorflow >= 1, < 2",
+    "numpy >= 1.11.2, < 2",
+    "scipy >= 0.18.1, < 1",
+    "pillow >= 3.4.2, < 4"
 ]
 DOC_REQUIRES = [
     "sphinx >= 1.2.2, < 2",
@@ -39,7 +41,7 @@ DOC_REQUIRES = [
 ]
 TEST_REQUIRES = [
     "pytest-runner >= 2.7, < 3",
-    "pytest >= 2.9, < 3",
+    "pytest >= 3, < 4",
     "pytest-mock >= 0.11, < 1",
     "pytest-catchlog >= 1, < 2",
     "pytest-xdist >= 1.1, < 2",
