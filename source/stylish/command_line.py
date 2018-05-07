@@ -1,6 +1,12 @@
 # :coding: utf-8
 
+import sys
 import argparse
+import logging
+
+import stylish.model
+import stylish.filesystem
+import stylish.training
 
 
 def construct_parser():
@@ -11,7 +17,49 @@ def construct_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
+    parser.add_argument(
+        "-v", "--verbosity",
+        help="Set the logging output verbosity.",
+        choices=["debug", "info", "warning", "error"],
+        default="info"
+    )
+
+    parser.add_argument(
+        "--vgg19-path",
+        help="Path to Vgg19 pre-trained model in the MatConvNet data format.",
+        metavar="PATH",
+        required=True
+    )
+
+    parser.add_argument(
+        "--style-image-path",
+        help="Path to image from which the style will be extracted.",
+        metavar="PATH",
+        required=True
+    )
+
     return parser
+
+
+def _log_level(name):
+    """Return log level from *name*.
+    """
+    if name == "debug":
+        return logging.DEBUG
+
+    elif name == "info":
+        return logging.INFO
+
+    elif name == "warning":
+        return logging.WARNING
+
+    elif name == "error":
+        return logging.ERROR
+
+    else:
+        raise ValueError(
+            "The logging level is incorrect: {!r}".format(name)
+        )
 
 
 def main(arguments=None):
@@ -23,4 +71,13 @@ def main(arguments=None):
     parser = construct_parser()
     namespace = parser.parse_args(arguments)
 
-    print("Hello from Stylish!")
+    # Initiate logger.
+    logging.basicConfig(
+        stream=sys.stderr, level=_log_level(namespace.verbosity),
+        format="%(levelname)s: %(message)s"
+    )
+
+    image_matrix = stylish.filesystem.load_image(namespace.style_image_path)
+    layers, mean_pixel = stylish.model.extract_data(namespace.vgg19_path)
+
+    stylish.training.execute(image_matrix, layers, mean_pixel)
