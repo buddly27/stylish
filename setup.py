@@ -26,8 +26,8 @@ with open(
 INSTALL_REQUIRES = [
     "tensorflow >= 1, < 2",
     "numpy >= 1.11.2, < 2",
-    "scipy >= 0.18.1, < 1",
-    "pillow >= 3.4.2, < 4"
+    "scipy >= 0.1.0, < 2",
+    "imageio >= 2.3.0, < 3"
 ]
 DOC_REQUIRES = [
     "sphinx >= 1.2.2, < 2",
