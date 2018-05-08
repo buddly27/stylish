@@ -6,6 +6,7 @@ import logging
 
 import stylish.vgg
 import stylish.train
+import stylish.filesystem
 
 
 def construct_parser():
@@ -38,10 +39,10 @@ def construct_parser():
     )
 
     parser.add_argument(
-        "--content-targets",
+        "--content-target",
         help=(
-            "Path to a folder containg images from which the content features "
-            "will be extracted."
+            "Path to a folder containing images from which the content "
+            "features will be extracted."
         ),
         metavar="PATH",
         nargs="+",
@@ -89,6 +90,9 @@ def main(arguments=None):
 
     layers, mean_pixel = stylish.vgg.extract_data(namespace.vgg19_path)
 
+    # Extract targeted images for training.
+    content_targets = stylish.filesystem.fetch_images(namespace.content_target)
+
     stylish.train.extract_model(
-        namespace.style_target, namespace.content_targets, layers, mean_pixel
+        namespace.style_target, content_targets, layers, mean_pixel
     )

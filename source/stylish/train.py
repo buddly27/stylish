@@ -17,6 +17,7 @@ CONTENT_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
 LEARNING_RATE = 1e-3
+EPOCHS_NUMBER = 2
 
 
 def extract_model(style_target, content_targets, layers, mean_pixel):
@@ -25,8 +26,8 @@ def extract_model(style_target, content_targets, layers, mean_pixel):
     *style_target* should be the path to an image from which the style features
     should be extracted.
 
-    *content_targets* should be the path to a folder containing images from
-    which the content features should be extracted.
+    *content_targets* should be the list of image paths from which the content
+    features should be extracted.
 
     *layers* should be an array of layers :func:`extracted
     <stylish.vgg.extract_data>` from the Vgg19 model file.
@@ -36,7 +37,7 @@ def extract_model(style_target, content_targets, layers, mean_pixel):
     the Vgg19 model file.
 
     """
-    logging.info("Train model from image.")
+    logging.info("Train style generator model.")
 
     # Pre-compute style feature map.
     style_features = compute_style_features(style_target, layers, mean_pixel)
@@ -57,13 +58,32 @@ def extract_model(style_target, content_targets, layers, mean_pixel):
         content_features = loss_network[stylish.vgg.CONTENT_LAYER]
         predictions = stylish.transform.network(content_image/255.0)
 
-        loss = compute_loss_ratio(
+        content_loss, style_loss, total_variation_loss = compute_losses(
             predictions, batch_shape, style_features, content_features,
             layers, mean_pixel
         )
 
+        total_loss = content_loss, style_loss, total_variation_loss
+
         optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
-        training_op = optimizer.minimize(loss)
+        training_op = optimizer.minimize(total_loss)
+
+        # Start training.
+
+        logging.info("Start training.")
+
+        session.run(tf.global_variables_initializer())
+
+        train_size = len(content_targets)
+
+        for epoch in range(EPOCHS_NUMBER):
+
+            for iteration in range(train_size // BATCH_SIZE):
+                x_batch = get_next_batch(
+                    iteration, content_targets, BATCH_SIZE, batch_shape
+                )
+
+                session.run(training_op, feed_dict={"X_content": x_batch})
 
 
 def compute_style_features(style_target, layers, mean_pixel):
@@ -108,10 +128,12 @@ def compute_style_features(style_target, layers, mean_pixel):
         images = np.array([image_matrix])
 
         for layer in stylish.vgg.STYLE_LAYERS:
-            logging.debug("Process layer {!r}.".format(layer))
+            logging.debug("Start processing style layer {!r}.".format(layer))
+
             features = session.run(
                 loss_network[layer], feed_dict={style_image: images}
             )
+
             logging.debug("Layer {!r} processed.".format(layer))
 
             features = np.reshape(features, (-1, features.shape[3]))
@@ -121,11 +143,11 @@ def compute_style_features(style_target, layers, mean_pixel):
     return style_features
 
 
-def compute_loss_ratio(
+def compute_losses(
     predictions, batch_shape, style_features, content_features,
     layers, mean_pixel
 ):
-    """Compute the loss ratio from *predictions*.
+    """Compute loss ratios from *predictions*.
 
     *predictions* should be the output tensor of the
     :func:`transformation network <stylish.transform.network>`.
@@ -200,7 +222,36 @@ def compute_loss_ratio(
         TV_WEIGHT * 2 * (x_tv / tv_x_size + y_tv / tv_y_size) / BATCH_SIZE
     )
 
-    return content_loss + style_loss + total_variation_loss
+    return content_loss, style_loss, total_variation_loss
+
+
+def get_next_batch(iteration, content_targets, batch_size, batch_shape):
+    """Return Numpy array with image matrices according to *iteration* index.
+
+    *iteration* should be an integer specifying the current portion of the
+    images to return.
+
+    *content_targets* should be the list of image paths from which the content
+    features should be extracted.
+
+    *batch_size* should be the size of the image list to return.
+
+    *batch_shape* should be indicate the dimensions in which each image should
+    be resized to.
+
+    """
+    current = iteration * batch_size
+    step = current + batch_size
+
+    x_batch = np.zeros(batch_shape, dtype=np.float32)
+
+    # Extract and resize images from training data.
+    for index, image_path in enumerate(content_targets[current:step]):
+        x_batch[index] = stylish.filesystem.load_image(
+            image_path, image_size=batch_shape[1:]
+        ).astype(np.float32)
+
+    return x_batch
 
 
 def _extract_tensor_size(tensor):
