@@ -1,11 +1,12 @@
 # :coding: utf-8
 
 import os
+import errno
+import logging
 
 import numpy as np
 import imageio
 import scipy.misc
-import logging
 
 
 def load_image(image_path, image_size=None):
@@ -39,3 +40,15 @@ def fetch_images(path):
         images.append(os.path.join(path, image))
 
     return images
+
+
+def ensure_directory_access(path):
+    """Ensure directory exists at *path* and is accessible."""
+    try:
+        os.makedirs(path)
+    except OSError as error:
+        if error.errno != errno.EEXIST:
+            raise
+
+        if not os.path.isdir(path):
+            raise

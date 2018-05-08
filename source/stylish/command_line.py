@@ -24,21 +24,31 @@ def construct_parser():
         default="info"
     )
 
-    parser.add_argument(
+    subparsers = parser.add_subparsers(
+        title="Commands",
+        dest="subcommands"
+    )
+
+    train_parser = subparsers.add_parser(
+        "train", help="Train a style generator model.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    train_parser.add_argument(
         "--vgg19-path",
         help="Path to Vgg19 pre-trained model in the MatConvNet data format.",
         metavar="PATH",
         required=True
     )
 
-    parser.add_argument(
+    train_parser.add_argument(
         "--style-target",
         help="Path to image from which the style features will be extracted.",
         metavar="PATH",
         required=True
     )
 
-    parser.add_argument(
+    train_parser.add_argument(
         "--content-target",
         help=(
             "Path to a folder containing images from which the content "
@@ -46,6 +56,13 @@ def construct_parser():
         ),
         metavar="PATH",
         nargs="+",
+        required=True
+    )
+
+    train_parser.add_argument(
+        "--output-model",
+        help="Path to save the output trained model.",
+        metavar="PATH",
         required=True
     )
 
@@ -88,11 +105,22 @@ def main(arguments=None):
         format="%(levelname)s: %(message)s"
     )
 
-    layers, mean_pixel = stylish.vgg.extract_data(namespace.vgg19_path)
+    if namespace.subcommands == "train":
 
-    # Extract targeted images for training.
-    content_targets = stylish.filesystem.fetch_images(namespace.content_target)
+        layers, mean_pixel = stylish.vgg.extract_data(namespace.vgg19_path)
 
-    stylish.train.extract_model(
-        namespace.style_target, content_targets, layers, mean_pixel
-    )
+        # Extract targeted images for training.
+        content_targets = stylish.filesystem.fetch_images(
+            namespace.content_target
+        )
+
+        # Ensure that the output model path exist and is accessible.
+        stylish.filesystem.ensure_directory_access(namespace.output_model)
+
+        # Train the model and export it.
+        model_path = stylish.train.extract_model(
+            namespace.style_target, content_targets, layers, mean_pixel,
+            namespace.output_model
+        )
+
+        logging.info("Model trained: {}".format(model_path))

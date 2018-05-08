@@ -3,6 +3,7 @@
 import logging
 import operator
 import functools
+import time
 
 import tensorflow as tf
 import numpy as np
@@ -20,7 +21,9 @@ LEARNING_RATE = 1e-3
 EPOCHS_NUMBER = 2
 
 
-def extract_model(style_target, content_targets, layers, mean_pixel):
+def extract_model(
+    style_target, content_targets, layers, mean_pixel, model_path
+):
     """Train and return style generator model path.
 
     *style_target* should be the path to an image from which the style features
@@ -35,6 +38,8 @@ def extract_model(style_target, content_targets, layers, mean_pixel):
     *mean_pixel* should be an array of three mean pixel values for the Red,
     Green and Blue channels :func:`extracted <stylish.vgg.extract_data>` from
     the Vgg19 model file.
+
+    *model_path* should be the path where the trained model should be saved.
 
     """
     logging.info("Train style generator model.")
@@ -58,32 +63,53 @@ def extract_model(style_target, content_targets, layers, mean_pixel):
         content_features = loss_network[stylish.vgg.CONTENT_LAYER]
         predictions = stylish.transform.network(content_image/255.0)
 
-        content_loss, style_loss, total_variation_loss = compute_losses(
+        loss = compute_loss_ratio(
             predictions, batch_shape, style_features, content_features,
             layers, mean_pixel
         )
 
-        total_loss = content_loss, style_loss, total_variation_loss
-
         optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
-        training_op = optimizer.minimize(total_loss)
+        training_op = optimizer.minimize(loss)
 
         # Start training.
 
         logging.info("Start training.")
 
         session.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
 
         train_size = len(content_targets)
 
         for epoch in range(EPOCHS_NUMBER):
+            logging.debug("Start epoch #{}.".format(epoch))
+
+            start_time = time.time()
 
             for iteration in range(train_size // BATCH_SIZE):
+                logging.debug("Start processing batch #{}.".format(iteration))
+                _start_time = time.time()
+
                 x_batch = get_next_batch(
                     iteration, content_targets, BATCH_SIZE, batch_shape
                 )
 
                 session.run(training_op, feed_dict={"X_content": x_batch})
+
+                _end_time = time.time()
+                logging.debug(
+                    "Batch #{} processed [time: {}].".format(
+                        iteration, _end_time - _start_time
+                    )
+                )
+
+            end_time = time.time()
+            logging.debug(
+                "Epoch #{} processed [time: {}].".format(
+                    epoch, end_time - start_time
+                )
+            )
+
+            return saver.save(session, model_path)
 
 
 def compute_style_features(style_target, layers, mean_pixel):
@@ -143,11 +169,11 @@ def compute_style_features(style_target, layers, mean_pixel):
     return style_features
 
 
-def compute_losses(
+def compute_loss_ratio(
     predictions, batch_shape, style_features, content_features,
     layers, mean_pixel
 ):
-    """Compute loss ratios from *predictions*.
+    """Compute loss ratio from *predictions*.
 
     *predictions* should be the output tensor of the
     :func:`transformation network <stylish.transform.network>`.
@@ -177,7 +203,9 @@ def compute_losses(
 
     content_size = _extract_tensor_size(content_features) * BATCH_SIZE
     content_loss = CONTENT_WEIGHT * (
-        2 * tf.nn.l2_loss(content_features - content_features) / content_size
+        2 * tf.nn.l2_loss(
+            network[stylish.vgg.CONTENT_LAYER] - content_features
+        ) / content_size
     )
 
     # Compute style reconstruction loss from style features map.
@@ -222,7 +250,7 @@ def compute_losses(
         TV_WEIGHT * 2 * (x_tv / tv_x_size + y_tv / tv_y_size) / BATCH_SIZE
     )
 
-    return content_loss, style_loss, total_variation_loss
+    return content_loss + style_loss + total_variation_loss
 
 
 def get_next_batch(iteration, content_targets, batch_size, batch_shape):
