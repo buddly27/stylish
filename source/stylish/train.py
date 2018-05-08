@@ -9,6 +9,7 @@ import numpy as np
 
 import stylish.vgg
 import stylish.transform
+import stylish.filesystem
 
 
 BATCH_SIZE = 4
@@ -18,11 +19,14 @@ TV_WEIGHT = 2e2
 LEARNING_RATE = 1e-3
 
 
-def execute(image_matrix, layers, mean_pixel):
-    """Train style generator model from *image_matrix*.
+def extract_model(style_target, content_targets, layers, mean_pixel):
+    """Train and return style generator model path.
 
-    *image_matrix* should be a 3-D Numpy array representing an image with 3
-    channels (Red, Green and Blue).
+    *style_target* should be the path to an image from which the style features
+    should be extracted.
+
+    *content_targets* should be the path to a folder containing images from
+    which the content features should be extracted.
 
     *layers* should be an array of layers :func:`extracted
     <stylish.vgg.extract_data>` from the Vgg19 model file.
@@ -35,7 +39,7 @@ def execute(image_matrix, layers, mean_pixel):
     logging.info("Train model from image.")
 
     # Pre-compute style feature map.
-    style_features = compute_style_features(image_matrix, layers, mean_pixel)
+    style_features = compute_style_features(style_target, layers, mean_pixel)
 
     # Initiate a default graph.
     graph = tf.Graph()
@@ -62,14 +66,14 @@ def execute(image_matrix, layers, mean_pixel):
         training_op = optimizer.minimize(loss)
 
 
-def compute_style_features(image_matrix, layers, mean_pixel):
+def compute_style_features(style_target, layers, mean_pixel):
     """Return computed style features map from *image_matrix*.
 
     The style feature map will be used to penalize the predicted image when it
     deviates from the style (colors, textures, common patterns, etc.).
 
-    *image_matrix* should be a 3-D Numpy array representing an image of
-    undefined size with 3 channels (Red, Green and Blue).
+    *style_target* should be the path to an image from which the style features
+    should be extracted.
 
     *layers* should be an array of layers :func:`extracted
     <stylish.vgg.extract_data>` from the Vgg19 model file.
@@ -80,6 +84,9 @@ def compute_style_features(image_matrix, layers, mean_pixel):
 
     """
     logging.info("Compute style features for image.")
+
+    # Extract image matrix from image.
+    image_matrix = stylish.filesystem.load_image(style_target)
 
     # Initiate a default graph.
     graph = tf.Graph()

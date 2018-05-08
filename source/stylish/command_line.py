@@ -5,7 +5,6 @@ import argparse
 import logging
 
 import stylish.vgg
-import stylish.filesystem
 import stylish.train
 
 
@@ -32,9 +31,20 @@ def construct_parser():
     )
 
     parser.add_argument(
-        "--style-image-path",
-        help="Path to image from which the style will be extracted.",
+        "--style-target",
+        help="Path to image from which the style features will be extracted.",
         metavar="PATH",
+        required=True
+    )
+
+    parser.add_argument(
+        "--content-targets",
+        help=(
+            "Path to a folder containg images from which the content features "
+            "will be extracted."
+        ),
+        metavar="PATH",
+        nargs="+",
         required=True
     )
 
@@ -77,7 +87,8 @@ def main(arguments=None):
         format="%(levelname)s: %(message)s"
     )
 
-    image_matrix = stylish.filesystem.load_image(namespace.style_image_path)
     layers, mean_pixel = stylish.vgg.extract_data(namespace.vgg19_path)
 
-    stylish.train.execute(image_matrix, layers, mean_pixel)
+    stylish.train.extract_model(
+        namespace.style_target, namespace.content_targets, layers, mean_pixel
+    )
