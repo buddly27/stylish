@@ -121,7 +121,7 @@ def add_convolution_layer(
         input_tensor, weights_init, strides_shape, padding="SAME"
     )
 
-    tensor = instance_normalization(tensor)
+    tensor = add_instance_normalization(tensor)
     if activation is not None:
         tensor = tf.nn.relu(tensor)
 
@@ -165,14 +165,14 @@ def add_deconvolution_layer(
         input_tensor, weights_init, tf_shape, strides_shape, padding="SAME"
     )
 
-    tensor = instance_normalization(tensor)
+    tensor = add_instance_normalization(tensor)
     if activation is not None:
         tensor = tf.nn.relu(tensor)
 
     return tensor
 
 
-def instance_normalization(input_tensor):
+def add_instance_normalization(input_tensor):
     """Apply an instance normalization to the network.
 
     *input_tensor* will be the input of the layer.
