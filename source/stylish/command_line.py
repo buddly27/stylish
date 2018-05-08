@@ -6,6 +6,7 @@ import logging
 
 import stylish.vgg
 import stylish.train
+import stylish.feed_forward
 import stylish.filesystem
 
 
@@ -135,7 +136,6 @@ def main(arguments=None):
     )
 
     if namespace.subcommands == "train":
-
         layers, mean_pixel = stylish.vgg.extract_data(namespace.vgg19_path)
 
         # Extract targeted images for training.
@@ -143,7 +143,7 @@ def main(arguments=None):
             namespace.content_target
         )
 
-        # Ensure that the output model path exist and is accessible.
+        # Ensure that the output path exist and is accessible.
         stylish.filesystem.ensure_directory_access(namespace.output_model)
 
         # Train the model and export it.
@@ -153,3 +153,11 @@ def main(arguments=None):
         )
 
         logging.info("Model trained: {}".format(model_path))
+
+    elif namespace.subcommands == "apply":
+        # Ensure that the output path exist and is accessible.
+        stylish.filesystem.ensure_directory_access(namespace.output)
+
+        stylish.feed_forward.transform_image(
+            namespace.model, namespace.input, namespace.output
+        )

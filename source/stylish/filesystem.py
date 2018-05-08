@@ -29,6 +29,12 @@ def load_image(image_path, image_size=None):
     return matrix
 
 
+def save_image(image_matrix, path):
+    """Save *image_matrix* to *path*."""
+    image = np.clip(image_matrix, 0, 255).astype(np.uint8)
+    imageio.imwrite(path, image)
+
+
 def fetch_images(path):
     """Return list of image paths from *path*."""
     if not os.path.isdir(path) or not os.access(path, os.R_OK):
