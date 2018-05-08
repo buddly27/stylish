@@ -4,9 +4,9 @@ import sys
 import argparse
 import logging
 
-import stylish.model
+import stylish.vgg
 import stylish.filesystem
-import stylish.training
+import stylish.train
 
 
 def construct_parser():
@@ -78,6 +78,6 @@ def main(arguments=None):
     )
 
     image_matrix = stylish.filesystem.load_image(namespace.style_image_path)
-    layers, mean_pixel = stylish.model.extract_data(namespace.vgg19_path)
+    layers, mean_pixel = stylish.vgg.extract_data(namespace.vgg19_path)
 
-    stylish.training.execute(image_matrix, layers, mean_pixel)
+    stylish.train.execute(image_matrix, layers, mean_pixel)
