@@ -184,10 +184,8 @@ def add_instance_normalization(input_tensor):
         <https://arxiv.org/abs/1607.08022>`.
 
     """
-    batch, rows, columns, channels = [
-        dimension.value for dimension in input_tensor.get_shape()
-    ]
-    variable_shape = [channels]
+    _channels = input_tensor.shape[-1].value
+    variable_shape = [_channels]
     mu, sigma_sq = tf.nn.moments(input_tensor, [1, 2], keep_dims=True)
 
     shift = tf.Variable(tf.zeros(variable_shape))
