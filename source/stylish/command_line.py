@@ -61,7 +61,36 @@ def construct_parser():
 
     train_parser.add_argument(
         "--output-model",
-        help="Path to save the output trained model.",
+        help="Path to folder in which the trained model will be saved.",
+        metavar="PATH",
+        required=True
+    )
+
+    apply_parser = subparsers.add_parser(
+        "apply", help="Apply a style generator model to an image.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    apply_parser.add_argument(
+        "--model",
+        help=(
+            "Path to trained style generator model which will be used to "
+            "apply the style."
+        ),
+        metavar="PATH",
+        required=True
+    )
+
+    apply_parser.add_argument(
+        "--input",
+        help="Path to image to transform.",
+        metavar="PATH",
+        required=True
+    )
+
+    apply_parser.add_argument(
+        "--output",
+        help="Path to folder in which the transformed image will be saved.",
         metavar="PATH",
         required=True
     )
