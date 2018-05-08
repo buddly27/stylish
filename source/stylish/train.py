@@ -1,9 +1,11 @@
 # :coding: utf-8
 
+import os
 import logging
 import operator
 import functools
 import time
+import uuid
 
 import tensorflow as tf
 import numpy as np
@@ -109,7 +111,8 @@ def extract_model(
                 )
             )
 
-            return saver.save(session, model_path)
+            model_name = "style_model_{}".format(uuid.uuid4())
+            return saver.save(session, os.path.join(model_path, model_name))
 
 
 def compute_style_features(style_target, layers, mean_pixel):
