@@ -92,7 +92,7 @@ def add_residual_block(input_tensor, kernel_size):
 
 
 def add_convolution_layer(
-    input_tensor, channels, kernel_size, strides, activation=False
+    input_tensor, channels, kernel_size, strides, activation=None
 ):
     """Apply a 2-D convolution layer to the network.
 
@@ -111,7 +111,7 @@ def add_convolution_layer(
 
     """
     _channels = input_tensor.shape[-1].value
-    weights_shape = [kernel_size, kernel_size, channels, _channels]
+    weights_shape = [kernel_size, kernel_size, _channels, channels]
     weights_init = tf.Variable(
         tf.truncated_normal(weights_shape, stddev=0.1, seed=1), dtype=tf.float32
     )
@@ -129,7 +129,7 @@ def add_convolution_layer(
 
 
 def add_deconvolution_layer(
-    input_tensor, channels, kernel_size, strides, activation=False
+    input_tensor, channels, kernel_size, strides, activation=None
 ):
     """Apply a transposed 2-D convolution layer to the network.
 
@@ -148,12 +148,12 @@ def add_deconvolution_layer(
 
     """
     _channels = input_tensor.shape[-1].value
-    weights_shape = [kernel_size, kernel_size, _channels, channels]
+    weights_shape = [kernel_size, kernel_size, channels, _channels]
     weights_init = tf.Variable(
         tf.truncated_normal(weights_shape, stddev=0.1, seed=1), dtype=tf.float32
     )
 
-    batch_size, rows, columns, channels = [
+    batch_size, rows, columns, _ = [
         dimension.value for dimension in input_tensor.get_shape()
     ]
     strides_shape = [1, strides, strides, 1]
