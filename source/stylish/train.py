@@ -95,7 +95,7 @@ def extract_model(
                     iteration, content_targets, BATCH_SIZE, batch_shape
                 )
 
-                session.run(training_op, feed_dict={"X_content": x_batch})
+                session.run(training_op, feed_dict={content_image: x_batch})
 
                 _end_time = time.time()
                 logging.debug(
