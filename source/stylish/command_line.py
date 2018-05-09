@@ -56,7 +56,6 @@ def construct_parser():
             "features will be extracted."
         ),
         metavar="PATH",
-        nargs="+",
         required=True
     )
 
