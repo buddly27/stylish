@@ -46,59 +46,142 @@ def network(input_images):
     It will be the input of the network.
 
     """
-    conv1 = add_convolution_layer(
-        input_images, channels=32, kernel_size=9, strides=1, activation=True
+    # Convolutional layers.
+
+    convolutional_layer1 = add_convolution_layer(
+        input_images,
+        in_channels=3,
+        out_channels=32,
+        kernel_size=9,
+        strides=1,
+        activation=True
     )
-    conv2 = add_convolution_layer(
-        conv1, channels=64, kernel_size=3, strides=2, activation=True
+    convolutional_layer2 = add_convolution_layer(
+        convolutional_layer1,
+        in_channels=32,
+        out_channels=64,
+        kernel_size=3,
+        strides=2,
+        activation=True
     )
-    conv3 = add_convolution_layer(
-        conv2, channels=128, kernel_size=3, strides=2, activation=True
+    convolutional_layer3 = add_convolution_layer(
+        convolutional_layer2,
+        in_channels=64,
+        out_channels=128,
+        kernel_size=3,
+        strides=2,
+        activation=True
     )
 
-    resid1 = add_residual_block(conv3, kernel_size=3)
-    resid2 = add_residual_block(resid1, kernel_size=3)
-    resid3 = add_residual_block(resid2, kernel_size=3)
-    resid4 = add_residual_block(resid3, kernel_size=3)
-    resid5 = add_residual_block(resid4, kernel_size=3)
+    # Residual blocks.
 
-    deconv1 = add_deconvolution_layer(
-        resid5, channels=64, kernel_size=3, strides=2, activation=True
+    residual_block1 = add_residual_block(
+        convolutional_layer3,
+        in_channels=128,
+        out_channels=128,
+        kernel_size=3,
+        strides=1
     )
-    deconv2 = add_deconvolution_layer(
-        deconv1, channels=32, kernel_size=3, strides=2, activation=True
+    residual_block2 = add_residual_block(
+        residual_block1,
+        in_channels=128,
+        out_channels=128,
+        kernel_size=3,
+        strides=1
+    )
+    residual_block3 = add_residual_block(
+        residual_block2,
+        in_channels=128,
+        out_channels=128,
+        kernel_size=3,
+        strides=1
+    )
+    residual_block4 = add_residual_block(
+        residual_block3,
+        in_channels=128,
+        out_channels=128,
+        kernel_size=3,
+        strides=1
+    )
+    residual_block5 = add_residual_block(
+        residual_block4,
+        in_channels=128,
+        out_channels=128,
+        kernel_size=3,
+        strides=1
     )
 
-    conv4 = add_convolution_layer(
-        deconv2, channels=3, kernel_size=9, strides=1
+    # Transposed convolutional layers.
+
+    de_convolutional_layer1 = add_deconvolution_layer(
+        residual_block5,
+        in_channels=64,
+        out_channels=128,
+        kernel_size=3,
+        strides=2,
+        activation=True
     )
-    output = tf.nn.tanh(conv4) * 150 + 255.0/2
+    de_convolutional_layer2 = add_deconvolution_layer(
+        de_convolutional_layer1,
+        in_channels=32,
+        out_channels=64,
+        kernel_size=3,
+        strides=2,
+        activation=True
+    )
+    convolutional_layer4 = add_convolution_layer(
+        de_convolutional_layer2,
+        in_channels=32,
+        out_channels=3,
+        kernel_size=9,
+        strides=1
+    )
+
+    output = tf.add(
+        tf.nn.tanh(convolutional_layer4) * 150, 255.0/2, name="output"
+    )
     return output
 
 
-def add_residual_block(input_tensor, kernel_size):
+def add_residual_block(
+    input_tensor, in_channels, out_channels, kernel_size, strides
+):
     """Apply a residual block to the network.
 
     *input_tensor* will be the input of the block.
 
+    *in_channels* should be the number of channels at the input of the block.
+
+    *out_channels* should be the number of channels at the output of the block.
+
     *kernel_size* should be the width and height of the convolution matrix used
     within the block.
 
+    *strides* should indicate the stride of the sliding window for each
+    dimension of *input_tensor*.
+
     """
-    conv1 = add_convolution_layer(input_tensor, 128, kernel_size, 1)
+    conv1 = add_convolution_layer(
+        input_tensor, in_channels, out_channels, kernel_size, strides
+    )
     relu = tf.nn.relu(conv1)
-    conv2 = add_convolution_layer(relu, 128, kernel_size, 1)
+    conv2 = add_convolution_layer(
+        relu, in_channels, out_channels, kernel_size, strides
+    )
     return input_tensor + conv2
 
 
 def add_convolution_layer(
-    input_tensor, channels, kernel_size, strides, activation=None
+    input_tensor, in_channels, out_channels, kernel_size, strides,
+    activation=False
 ):
     """Apply a 2-D convolution layer to the network.
 
     *input_tensor* will be the input of the layer.
 
-    *channels* should be the number of channels used as an input.
+    *in_channels* should be the number of channels at the input of the layer.
+
+    *out_channels* should be the number of channels at the output of the layer.
 
     *kernel_size* should be the width and height of the convolution matrix used
     within the block.
@@ -110,8 +193,7 @@ def add_convolution_layer(
     the convolution layer.
 
     """
-    _channels = input_tensor.shape[-1].value
-    weights_shape = [kernel_size, kernel_size, _channels, channels]
+    weights_shape = [kernel_size, kernel_size, in_channels, out_channels]
     weights_init = tf.Variable(
         tf.truncated_normal(weights_shape, stddev=0.1, seed=1), dtype=tf.float32
     )
@@ -121,21 +203,24 @@ def add_convolution_layer(
         input_tensor, weights_init, strides_shape, padding="SAME"
     )
 
-    tensor = add_instance_normalization(tensor)
-    if activation is not None:
+    tensor = add_instance_normalization(tensor, [out_channels])
+    if activation:
         tensor = tf.nn.relu(tensor)
 
     return tensor
 
 
 def add_deconvolution_layer(
-    input_tensor, channels, kernel_size, strides, activation=None
+    input_tensor, in_channels, out_channels, kernel_size, strides,
+    activation=None
 ):
     """Apply a transposed 2-D convolution layer to the network.
 
     *input_tensor* will be the input of the layer.
 
-    *channels* should be the number of channels used as an output.
+    *in_channels* should be the number of channels at the input of the layer.
+
+    *out_channels* should be the number of channels at the output of the layer.
 
     *kernel_size* should be the width and height of the convolution matrix used
     within the block.
@@ -147,32 +232,31 @@ def add_deconvolution_layer(
     the convolution layer.
 
     """
-    _channels = input_tensor.shape[-1].value
-    weights_shape = [kernel_size, kernel_size, channels, _channels]
+    weights_shape = [kernel_size, kernel_size, in_channels, out_channels]
     weights_init = tf.Variable(
         tf.truncated_normal(weights_shape, stddev=0.1, seed=1), dtype=tf.float32
     )
 
-    batch_size, rows, columns, _ = [
-        dimension.value for dimension in input_tensor.get_shape()
-    ]
+    shape = tf.shape(input_tensor)
+
     strides_shape = [1, strides, strides, 1]
-    new_rows, new_columns = int(rows * strides), int(columns * strides)
-    new_shape = [batch_size, new_rows, new_columns, channels]
+    new_rows = tf.multiply(shape[1], strides)
+    new_columns = tf.multiply(shape[2], strides)
+    new_shape = [shape[0], new_rows, new_columns, in_channels]
     tf_shape = tf.stack(new_shape)
 
     tensor = tf.nn.conv2d_transpose(
         input_tensor, weights_init, tf_shape, strides_shape, padding="SAME"
     )
 
-    tensor = add_instance_normalization(tensor)
+    tensor = add_instance_normalization(tensor, [in_channels])
     if activation is not None:
         tensor = tf.nn.relu(tensor)
 
     return tensor
 
 
-def add_instance_normalization(input_tensor):
+def add_instance_normalization(input_tensor, variable_shape):
     """Apply an instance normalization to the network.
 
     *input_tensor* will be the input of the layer.
@@ -184,14 +268,9 @@ def add_instance_normalization(input_tensor):
         <https://arxiv.org/abs/1607.08022>`.
 
     """
-    _channels = input_tensor.shape[-1].value
-    variable_shape = [_channels]
     mu, sigma_sq = tf.nn.moments(input_tensor, [1, 2], keep_dims=True)
-
     shift = tf.Variable(tf.zeros(variable_shape))
     scale = tf.Variable(tf.ones(variable_shape))
     epsilon = 1e-3
     normalized = (input_tensor - mu) / (sigma_sq + epsilon)**.5
-
-    return scale * normalized + shift
-
+    return tf.multiply(tf.add(scale, normalized), shift)
