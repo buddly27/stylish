@@ -4,6 +4,17 @@
 Release Notes
 *************
 
+.. release:: Upcoming
+
+    .. change:: fixed
+
+        Reformat :mod:`stylish.transform` module to let the size of the images
+        unknown when processing the checkpoint.
+
+    .. change:: fixed
+
+        Make the :func:`stylish.train.extract_model` function more verbose.
+
 .. release:: 0.1.1
     :date: 2018-05-09
 
