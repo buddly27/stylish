@@ -83,7 +83,7 @@ def extract_model(
         train_size = len(content_targets)
 
         for epoch in range(EPOCHS_NUMBER):
-            logging.debug("Start epoch #{}.".format(epoch))
+            logging.info("Start epoch #{}.".format(epoch))
 
             start_time = time.time()
 
@@ -98,14 +98,23 @@ def extract_model(
                 session.run(training_op, feed_dict={content_image: x_batch})
 
                 _end_time = time.time()
-                logging.debug(
-                    "Batch #{} processed [time: {}].".format(
-                        iteration, _end_time - _start_time
+
+                if iteration % 500 == 0:
+                    logging.info(
+                        "Batch #{} processed [time: {}].".format(
+                            iteration, _end_time - _start_time
+                        )
                     )
-                )
+
+                else:
+                    logging.debug(
+                        "Batch #{} processed [time: {}].".format(
+                            iteration, _end_time - _start_time
+                        )
+                    )
 
             end_time = time.time()
-            logging.debug(
+            logging.info(
                 "Epoch #{} processed [time: {}].".format(
                     epoch, end_time - start_time
                 )
