@@ -4,6 +4,12 @@
 Release Notes
 *************
 
+.. release:: Upcoming
+
+    .. change:: fixed
+
+        Always use GPU for the training when available.
+
 .. release:: 0.1.3
     :date: 2018-05-19
 

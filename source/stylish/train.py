@@ -62,7 +62,10 @@ def extract_model(
     # Initiate the batch shape.
     batch_shape = (BATCH_SIZE, 256, 256, 3)
 
-    with graph.as_default(), tf.Session() as session:
+    soft_config = tf.ConfigProto(allow_soft_placement=True)
+    soft_config.gpu_options.allow_growth = True
+
+    with graph.as_default(), tf.Session(config=soft_config) as session:
         input_placeholder = tf.placeholder(
             tf.float32, shape=[None, None, None, 3], name="input"
         )
@@ -183,7 +186,10 @@ def compute_style_features(style_target, layers, mean_pixel):
     # Initiate the style features.
     style_features = {}
 
-    with graph.as_default(), tf.Session() as session:
+    soft_config = tf.ConfigProto(allow_soft_placement=True)
+    soft_config.gpu_options.allow_growth = True
+
+    with graph.as_default(), tf.Session(config=soft_config) as session:
         style_image = tf.placeholder(
             tf.float32, shape=image_shape, name="style_image"
         )
