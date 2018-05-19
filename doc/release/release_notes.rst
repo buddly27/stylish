@@ -4,6 +4,13 @@
 Release Notes
 *************
 
+.. release:: Upcoming
+
+    .. change:: fixed
+
+        Reformat :mod:`stylish.train` module to prevent fixing the shape of the
+        input placeholder.
+
 .. release:: 0.1.2
     :date: 2018-05-18
 
