@@ -44,6 +44,14 @@ def extract_model(
     logging.info("Train style generator model.")
 
     style_name = os.path.basename(style_target.split(".", 1)[0])
+    root = os.path.join(model_path, style_name)
+    stylish.filesystem.ensure_directory_access(root)
+
+    outputs = {
+        "model": os.path.join(root, "model"),
+        "checkpoints": os.path.join(root, "checkpoints"),
+        "log": os.path.join(root, "log"),
+    }
 
     # Pre-compute style feature map.
     style_features = compute_style_features(style_target, layers, mean_pixel)
@@ -59,7 +67,9 @@ def extract_model(
             tf.float32, shape=[None, None, None, 3], name="input"
         )
         normalized_image = input_placeholder - mean_pixel
-        loss_network = stylish.vgg.extract_network(normalized_image, layers)
+
+        with tf.name_scope("network"):
+            loss_network = stylish.vgg.extract_network(normalized_image, layers)
 
         content_features = loss_network[stylish.vgg.CONTENT_LAYER]
         predictions = stylish.transform.network(input_placeholder/255.0)
@@ -72,11 +82,15 @@ def extract_model(
         optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
         training_op = optimizer.minimize(loss)
 
+        # Save log to visualize the graph with tensorboard.
+        tf.summary.FileWriter(outputs["log"], session.graph)
+
         # Start training.
 
         logging.info("Start training.")
 
         session.run(tf.global_variables_initializer())
+
         saver = tf.train.Saver()
 
         train_size = len(content_targets)
@@ -102,7 +116,7 @@ def extract_model(
                 message_batch_end = "Batch #{} processed [time: {}]."
                 if index % 500 == 0:
                     logging.info(message_batch_end.format(index, _delta))
-                    saver.save(session, os.path.join(model_path, style_name))
+                    saver.save(session, outputs["checkpoints"])
 
                 else:
                     logging.debug(message_batch_end.format(index, _delta))
@@ -114,7 +128,7 @@ def extract_model(
 
             # Save checkpoint.
 
-            saver.save(session, os.path.join(model_path, style_name))
+            saver.save(session, outputs["checkpoints"])
 
         # Save model.
 
@@ -127,8 +141,7 @@ def extract_model(
             method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME
         )
 
-        path = os.path.join(model_path, style_name)
-        builder = tf.saved_model.builder.SavedModelBuilder(path)
+        builder = tf.saved_model.builder.SavedModelBuilder(outputs["model"])
         builder.add_meta_graph_and_variables(
             session, [tf.saved_model.tag_constants.SERVING],
             signature_def_map={"predict_images": signature},
@@ -136,7 +149,7 @@ def extract_model(
         )
         builder.save()
 
-        return path
+        return outputs["model"]
 
 
 def compute_style_features(style_target, layers, mean_pixel):
