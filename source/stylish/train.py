@@ -2,10 +2,7 @@
 
 import os
 import logging
-import operator
-import functools
 import time
-import uuid
 
 import tensorflow as tf
 import numpy as np
@@ -46,6 +43,8 @@ def extract_model(
     """
     logging.info("Train style generator model.")
 
+    style_name = os.path.basename(style_target.split(".", 1)[0])
+
     # Pre-compute style feature map.
     style_features = compute_style_features(style_target, layers, mean_pixel)
 
@@ -56,14 +55,14 @@ def extract_model(
     batch_shape = (BATCH_SIZE, 256, 256, 3)
 
     with graph.as_default(), tf.Session() as session:
-        content_image = tf.placeholder(
-            tf.float32, shape=batch_shape, name="content_image"
+        input_placeholder = tf.placeholder(
+            tf.float32, shape=[None, None, None, 3], name="input"
         )
-        normalized_image = content_image - mean_pixel
+        normalized_image = input_placeholder - mean_pixel
         loss_network = stylish.vgg.extract_network(normalized_image, layers)
 
         content_features = loss_network[stylish.vgg.CONTENT_LAYER]
-        predictions = stylish.transform.network(content_image/255.0)
+        predictions = stylish.transform.network(input_placeholder/255.0)
 
         loss = compute_loss_ratio(
             predictions, batch_shape, style_features, content_features,
@@ -87,41 +86,57 @@ def extract_model(
 
             start_time = time.time()
 
-            for iteration in range(train_size // BATCH_SIZE):
-                logging.debug("Start processing batch #{}.".format(iteration))
+            for index in range(train_size // BATCH_SIZE):
+                logging.debug("Start processing batch #{}.".format(index))
                 _start_time = time.time()
 
                 x_batch = get_next_batch(
-                    iteration, content_targets, BATCH_SIZE, batch_shape
+                    index, content_targets, BATCH_SIZE, batch_shape
                 )
 
-                session.run(training_op, feed_dict={content_image: x_batch})
+                session.run(training_op, feed_dict={input_placeholder: x_batch})
 
                 _end_time = time.time()
+                _delta = _end_time - _start_time
 
-                if iteration % 500 == 0:
-                    logging.info(
-                        "Batch #{} processed [time: {}].".format(
-                            iteration, _end_time - _start_time
-                        )
-                    )
+                message_batch_end = "Batch #{} processed [time: {}]."
+                if index % 500 == 0:
+                    logging.info(message_batch_end.format(index, _delta))
+                    saver.save(session, os.path.join(model_path, style_name))
 
                 else:
-                    logging.debug(
-                        "Batch #{} processed [time: {}].".format(
-                            iteration, _end_time - _start_time
-                        )
-                    )
+                    logging.debug(message_batch_end.format(index, _delta))
 
             end_time = time.time()
-            logging.info(
-                "Epoch #{} processed [time: {}].".format(
-                    epoch, end_time - start_time
-                )
-            )
+            delta = end_time - start_time
 
-            model_name = "style_model_{}".format(uuid.uuid4())
-            return saver.save(session, os.path.join(model_path, model_name))
+            logging.info("Epoch #{} processed [time: {}].".format(epoch, delta))
+
+            # Save checkpoint.
+
+            saver.save(session, os.path.join(model_path, style_name))
+
+        # Save model.
+
+        input_info = tf.saved_model.utils.build_tensor_info(input_placeholder)
+        output_info = tf.saved_model.utils.build_tensor_info(predictions)
+
+        signature = tf.saved_model.signature_def_utils.build_signature_def(
+            inputs={"input": input_info},
+            outputs={"output": output_info},
+            method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME
+        )
+
+        path = os.path.join(model_path, style_name)
+        builder = tf.saved_model.builder.SavedModelBuilder(path)
+        builder.add_meta_graph_and_variables(
+            session, [tf.saved_model.tag_constants.SERVING],
+            signature_def_map={"predict_images": signature},
+
+        )
+        builder.save()
+
+        return path
 
 
 def compute_style_features(style_target, layers, mean_pixel):
@@ -213,7 +228,9 @@ def compute_loss_ratio(
 
     logging.info("Compute feature reconstruction loss ratio.")
 
-    content_size = _extract_tensor_size(content_features) * BATCH_SIZE
+    content_shape = tf.cast(tf.shape(content_features), tf.float32)
+    content_size = tf.reduce_prod(content_shape[1:]) * BATCH_SIZE
+
     content_loss = CONTENT_WEIGHT * (
         2 * tf.nn.l2_loss(
             network[stylish.vgg.CONTENT_LAYER] - content_features
@@ -228,29 +245,33 @@ def compute_loss_ratio(
 
     for style_layer in stylish.vgg.STYLE_LAYERS:
         layer = network[style_layer]
-        batch, height, width, filters = [
-            dimension.value for dimension in layer.get_shape()
-        ]
 
-        size = height * width * filters
-        feats = tf.reshape(layer, (batch, height * width, filters))
+        shape = tf.shape(layer)
+        new_shape = [shape[0], shape[1] * shape[2], shape[3]]
+        tf_shape = tf.stack(new_shape)
+
+        feats = tf.reshape(layer, shape=tf_shape)
         feats_transposed = tf.transpose(feats, perm=[0, 2, 1])
+
+        size = tf.cast(shape[1] * shape[2] * shape[3], tf.float32)
         grams = tf.matmul(feats_transposed, feats) / size
         style_gram = style_features[style_layer]
         style_losses.append(
             2 * tf.nn.l2_loss(grams - style_gram) / style_gram.size
         )
 
-    style_loss = (
-        STYLE_WEIGHT * functools.reduce(tf.add, style_losses) / BATCH_SIZE
-    )
+    style_loss = (STYLE_WEIGHT * tf.reduce_sum(style_losses) / BATCH_SIZE)
 
     # Compute total variation de-noising.
 
     logging.info("Compute total variation loss ratio.")
 
-    tv_y_size = _extract_tensor_size(predictions[:, 1:, :, :])
-    tv_x_size = _extract_tensor_size(predictions[:, :, 1:, :])
+    tv_y_size = tf.reduce_prod(
+        tf.cast(tf.shape(predictions[:, 1:, :, :]), tf.float32)[1:]
+    )
+    tv_x_size = tf.reduce_prod(
+        tf.cast(tf.shape(predictions[:, :, 1:, :]), tf.float32)[1:]
+    )
 
     y_tv = tf.nn.l2_loss(
         predictions[:, 1:, :, :] - predictions[:, :batch_shape[1] - 1, :, :]
@@ -292,10 +313,3 @@ def get_next_batch(iteration, content_targets, batch_size, batch_shape):
         ).astype(np.float32)
 
     return x_batch
-
-
-def _extract_tensor_size(tensor):
-    """Extract dimension from *tensor*."""
-    return functools.reduce(
-        operator.mul, (dim.value for dim in tensor.get_shape()[1:]), 1
-    )

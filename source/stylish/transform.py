@@ -161,14 +161,14 @@ def add_residual_block(
     dimension of *input_tensor*.
 
     """
-    conv1 = add_convolution_layer(
+    convolutional_layer1 = add_convolution_layer(
         input_tensor, in_channels, out_channels, kernel_size, strides
     )
-    relu = tf.nn.relu(conv1)
-    conv2 = add_convolution_layer(
-        relu, in_channels, out_channels, kernel_size, strides
+    activation_layer = tf.nn.relu(convolutional_layer1)
+    convolutional_layer2 = add_convolution_layer(
+        activation_layer, in_channels, out_channels, kernel_size, strides
     )
-    return input_tensor + conv2
+    return input_tensor + convolutional_layer2
 
 
 def add_convolution_layer(
