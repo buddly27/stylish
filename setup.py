@@ -24,26 +24,25 @@ with open(
 
 # Compute dependencies.
 INSTALL_REQUIRES = [
-    "tensorflow >= 1, < 2",
+    "click >= 7, < 8",
+    "colorama >= 0.3.9, < 1",
+    "imageio >= 2.3.0, < 3",
     "numpy >= 1.11.2, < 2",
+    "pystache >= 0.5.4, < 1",
     "scipy >= 0.1.0, < 2",
-    "imageio >= 2.3.0, < 3"
+    "sawmill >= 0.2.1, < 1",
+    "tensorflow >= 1, < 2"
 ]
 DOC_REQUIRES = [
-    "sphinx >= 1.2.2, < 2",
-    "sphinx_rtd_theme >= 0.1.6, < 1",
     "lowdown >= 0.1.0, < 2",
-
-    # Restricted as 0.1.3 causes failed builds.
-    # https://bitbucket.org/birkenfeld/sphinx-contrib/issues/168
-    "sphinxcontrib-autoprogram >= 0.1.2, !=0.1.3, < 1"
-
+    "sphinx >= 1.6, < 2",
+    "sphinx-click>=1.2.0",
+    "sphinx_rtd_theme >= 0.1.6, < 1"
 ]
 TEST_REQUIRES = [
     "pytest-runner >= 2.7, < 3",
-    "pytest >= 3, < 4",
-    "pytest-mock >= 0.11, < 1",
-    "pytest-catchlog >= 1, < 2",
+    "pytest >= 4.4.0, < 5",
+    "pytest-mock >= 1.1, < 2",
     "pytest-xdist >= 1.1, < 2",
     "pytest-cov >= 2, < 3"
 ]
