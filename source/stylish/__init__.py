@@ -1,3 +1,3 @@
 # :coding: utf-8
 
-from ._version import __version__
+from stylish._version import __version__
