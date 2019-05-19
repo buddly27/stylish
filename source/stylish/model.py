@@ -76,7 +76,7 @@ def extract_mapping(path):
     Raise :exc:`RuntimeError` if the model loaded is incorrect.
 
     """
-    logger = stylish.logging.Logger(__name__ + ".extract_layer_mapping")
+    logger = stylish.logging.Logger(__name__ + ".extract_mapping")
 
     # All layers and index that should be extracted from the Vgg19 model.
     vgg_layers = [
