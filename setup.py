@@ -31,6 +31,7 @@ INSTALL_REQUIRES = [
     "pystache >= 0.5.4, < 1",
     "scipy >= 0.1.0, < 2",
     "sawmill >= 0.2.1, < 1",
+    "scikit-image >= 0.15.0, < 1",
     "tensorflow >= 1, < 2"
 ]
 DOC_REQUIRES = [

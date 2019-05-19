@@ -1,12 +1,14 @@
 # :coding: utf-8
 
 import os
+import re
+import unicodedata
 import errno
 import logging
 
 import numpy as np
 import imageio
-import scipy.misc
+import skimage.transform
 
 
 def load_image(image_path, image_size=None):
@@ -24,7 +26,7 @@ def load_image(image_path, image_size=None):
         matrix = np.dstack((matrix, matrix, matrix))
 
     if image_size is not None:
-        matrix = scipy.misc.imresize(matrix, image_size)
+        matrix = skimage.transform.resize(matrix, image_size)
 
     return matrix
 
@@ -48,8 +50,14 @@ def fetch_images(path):
     return images
 
 
-def ensure_directory_access(path):
-    """Ensure directory exists at *path* and is accessible."""
+def ensure_directory(path):
+    """Ensure directory exists at *path*."""
+    # Explicitly indicate that path should be a directory as default OSError
+    # raised by 'os.makedirs' just indicates that the file exists, which is a
+    # bit confusing for user.
+    if os.path.isfile(path):
+        raise OSError("'{}' should be a directory".format(path))
+
     try:
         os.makedirs(path)
     except OSError as error:
@@ -58,3 +66,22 @@ def ensure_directory_access(path):
 
         if not os.path.isdir(path):
             raise
+
+
+def sanitise_value(value, substitution_character="_", case_sensitive=True):
+    """Return *value* suitable for use with filesystem.
+
+    Replace awkward characters with *substitution_character*. Where possible,
+    convert unicode characters to their closest "normal" form.
+
+    If not *case_sensitive*, then also lowercase value.
+
+    """
+    value = unicodedata.normalize("NFKD", value)
+    value = re.sub(r"[^\w._\-\\/:%]", substitution_character, value)
+    value = value.strip()
+
+    if not case_sensitive:
+        value = value.lower()
+
+    return value
