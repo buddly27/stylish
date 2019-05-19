@@ -3,10 +3,9 @@
 
 import click
 
+import stylish
 import stylish.logging
-import stylish.vgg
-import stylish.train
-import stylish.feed_forward
+import stylish.model
 import stylish.filesystem
 from stylish import __version__
 
@@ -78,17 +77,8 @@ def stylish_train(**kwargs):
     """Train a style generator model."""
     logger = stylish.logging.Logger(__name__ + ".stylish_train")
 
-    layers, mean_pixel = stylish.vgg.extract_data(kwargs["vgg"])
-
-    # Extract targeted images for training.
-    content_targets = stylish.filesystem.fetch_images(kwargs["content"])
-
-    # Ensure that the output path exist and is accessible.
-    stylish.filesystem.ensure_directory_access(kwargs["output"])
-
-    # Train the model and export it.
-    model_path = stylish.train.extract_model(
-        kwargs["style"], content_targets, layers, mean_pixel, kwargs["output"]
+    model_path = stylish.train_model(
+        kwargs["style"], kwargs["content"], kwargs["output"], kwargs["vgg"]
     )
 
     logger.info("Model trained: {}".format(model_path))
@@ -128,10 +118,10 @@ def stylish_apply(**kwargs):
     logger = stylish.logging.Logger(__name__ + ".stylish_apply")
 
     # Ensure that the output path exist and is accessible.
-    stylish.filesystem.ensure_directory_access(kwargs["output"])
+    stylish.filesystem.ensure_directory(kwargs["output"])
 
-    stylish.feed_forward.transform_image(
+    path = stylish.apply_model(
         kwargs["model"], kwargs["input"], kwargs["output"]
     )
 
-    logger.info("Model applied: {}".format(kwargs["model"]))
+    logger.info("Image generated: {}".format(path))

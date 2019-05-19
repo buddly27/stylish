@@ -56,7 +56,7 @@ def configure(stderr_level="info"):
 
     # File handler
     logging_path_prefix = os.path.join(tempfile.gettempdir(), "stylish", "logs")
-    stylish.filesystem.ensure_directory_access(logging_path_prefix)
+    stylish.filesystem.ensure_directory(logging_path_prefix)
 
     pid = os.getpid()
     file_path = os.path.join(
