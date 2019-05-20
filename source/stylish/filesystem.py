@@ -4,11 +4,12 @@ import os
 import re
 import unicodedata
 import errno
-import logging
 
 import numpy as np
 import imageio
 import skimage.transform
+
+import stylish.logging
 
 
 def load_image(image_path, image_size=None):
@@ -17,7 +18,8 @@ def load_image(image_path, image_size=None):
     *image_size* can be specified to resize the image.
 
     """
-    logging.debug("Load image from path: {!r}".format(image_path))
+    logger = stylish.logging.Logger(__name__ + ".load_image")
+    logger.debug("Load image from path: {!r}".format(image_path))
 
     matrix = imageio.imread(image_path).astype(np.float)
 
