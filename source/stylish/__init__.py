@@ -79,7 +79,7 @@ def train_model(
 
     with graph.as_default(), tf.Session(config=soft_config) as session:
         content_input = tf.placeholder(
-            tf.float32, shape=[None, None, None, 3], name="input"
+            tf.float32, shape=batch_shape, name="input"
         )
 
         normalized_image = content_input - stylish.model.VGG19_MEAN
