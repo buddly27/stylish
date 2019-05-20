@@ -131,29 +131,29 @@ def loss_network(vgg_mapping, input_tensor):
     """
     layer = conv2d_layer("conv1_1", vgg_mapping, input_tensor)
     layer = conv2d_layer("conv1_2", vgg_mapping, layer)
-    layer = average_layer("avg_pool1", layer)
+    layer = pool_layer("pool1", layer)
 
     layer = conv2d_layer("conv2_1", vgg_mapping, layer)
     layer = conv2d_layer("conv2_2", vgg_mapping, layer)
-    layer = average_layer("avg_pool2", layer)
+    layer = pool_layer("pool2", layer)
 
     layer = conv2d_layer("conv3_1", vgg_mapping, layer)
     layer = conv2d_layer("conv3_2", vgg_mapping, layer)
     layer = conv2d_layer("conv3_3", vgg_mapping, layer)
     layer = conv2d_layer("conv3_4", vgg_mapping, layer)
-    layer = average_layer("avg_pool3", layer)
+    layer = pool_layer("pool3", layer)
 
     layer = conv2d_layer("conv4_1", vgg_mapping, layer)
     layer = conv2d_layer("conv4_2", vgg_mapping, layer)
     layer = conv2d_layer("conv4_3", vgg_mapping, layer)
     layer = conv2d_layer("conv4_4", vgg_mapping, layer)
-    layer = average_layer("avg_pool4", layer)
+    layer = pool_layer("pool4", layer)
 
     layer = conv2d_layer("conv5_1", vgg_mapping, layer)
     layer = conv2d_layer("conv5_2", vgg_mapping, layer)
     layer = conv2d_layer("conv5_3", vgg_mapping, layer)
     layer = conv2d_layer("conv5_4", vgg_mapping, layer)
-    layer = average_layer("avg_pool5", layer)
+    layer = pool_layer("pool5", layer)
     return layer
 
 
@@ -201,13 +201,13 @@ def conv2d_layer(name, vgg_mapping, input_tensor):
     return layer
 
 
-def average_layer(name, input_tensor):
+def pool_layer(name, input_tensor):
     """Return average pooling layer named *name*.
 
     The layer returned should contain:
 
-    - An `average pooling node
-      <https://www.tensorflow.org/api_docs/python/tf/nn/avg_pool>`_
+    - An `max pooling node
+      <https://www.tensorflow.org/api_docs/python/tf/nn/max_pool>`_
 
     *name* should be the name of the average layer.
 
@@ -217,7 +217,7 @@ def average_layer(name, input_tensor):
     """
     logger = stylish.logging.Logger(__name__ + ".average_layer")
 
-    layer = tf.nn.avg_pool(
+    layer = tf.nn.max_pool(
         input_tensor,
         ksize=[1, 2, 2, 1],
         strides=[1, 2, 2, 1],
