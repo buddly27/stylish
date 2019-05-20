@@ -84,11 +84,11 @@ def train_model(
 
         normalized_image = content_input - stylish.model.VGG19_MEAN
 
-        with tf.name_scope("network"):
+        with tf.name_scope("network1"):
             stylish.model.loss_network(vgg_mapping, normalized_image)
 
         content_layer = graph.get_tensor_by_name(
-            "network/{}:0".format(stylish.model.CONTENT_LAYER)
+            "network1/{}:0".format(stylish.model.CONTENT_LAYER)
         )
         predictions = stylish.transform.network(content_input/255.0)
 
@@ -252,14 +252,16 @@ def compute_style_features(path, vgg_mapping):
             tf.float32, shape=image_shape, name="style_input"
         )
         normalized_image = style_input - stylish.model.VGG19_MEAN
-        stylish.model.loss_network(vgg_mapping, normalized_image)
+
+        with tf.name_scope("network2"):
+            stylish.model.loss_network(vgg_mapping, normalized_image)
 
         # Initiate input as a list of images.
         images = np.array([image_matrix])
 
         for layer_name, weight in stylish.model.STYLE_LAYERS:
             logger.debug("Processing style layer '{}'".format(layer_name))
-            layer = graph.get_tensor_by_name("{}:0".format(layer_name))
+            layer = graph.get_tensor_by_name("network2/{}:0".format(layer_name))
 
             features = session.run(layer, feed_dict={style_input: images})
             logger.debug("Layer '{}' processed.".format(layer_name))
@@ -293,7 +295,9 @@ def compute_loss_ratio(
     logger = stylish.logging.Logger(__name__ + ".compute_loss_ratio")
 
     normalized_predictions = predictions - stylish.model.VGG19_MEAN
-    stylish.model.loss_network(vgg_mapping, normalized_predictions)
+
+    with tf.name_scope("network3"):
+        stylish.model.loss_network(vgg_mapping, normalized_predictions)
 
     # Compute feature reconstruction loss from content feature map.
 
@@ -302,7 +306,7 @@ def compute_loss_ratio(
     content_shape = tf.cast(tf.shape(content_layer), tf.float32)
     content_size = tf.reduce_prod(content_shape[1:]) * BATCH_SIZE
     _content_layer = tf.get_default_graph().get_tensor_by_name(
-        "{}:0".format(stylish.model.CONTENT_LAYER)
+        "network3/{}:0".format(stylish.model.CONTENT_LAYER)
     )
 
     content_loss = CONTENT_WEIGHT * (
@@ -317,7 +321,7 @@ def compute_loss_ratio(
 
     for layer_name, _ in stylish.model.STYLE_LAYERS:
         layer = tf.get_default_graph().get_tensor_by_name(
-            "{}:0".format(layer_name)
+            "network3/{}:0".format(layer_name)
         )
 
         shape = tf.shape(layer)
