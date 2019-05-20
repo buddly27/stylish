@@ -202,20 +202,20 @@ def conv2d_layer(name, vgg_mapping, input_tensor):
 
 
 def pool_layer(name, input_tensor):
-    """Return average pooling layer named *name*.
+    """Return max pooling layer named *name*.
 
     The layer returned should contain:
 
     - An `max pooling node
       <https://www.tensorflow.org/api_docs/python/tf/nn/max_pool>`_
 
-    *name* should be the name of the average layer.
+    *name* should be the name of the max layer.
 
     *input_tensor* should be a Tensor that will be set as the input of the
-    average layer.
+    max layer.
 
     """
-    logger = stylish.logging.Logger(__name__ + ".average_layer")
+    logger = stylish.logging.Logger(__name__ + ".pool_layer")
 
     layer = tf.nn.max_pool(
         input_tensor,
@@ -226,6 +226,6 @@ def pool_layer(name, input_tensor):
     )
 
     logger.debug(
-        "Average Pool layer '{}' added [shape: {}]".format(name, layer.shape)
+        "Max Pool layer '{}' added [shape: {}]".format(name, layer.shape)
     )
     return layer
