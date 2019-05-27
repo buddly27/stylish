@@ -29,6 +29,7 @@ INSTALL_REQUIRES = [
     "imageio >= 2.3.0, < 3",
     "numpy >= 1.11.2, < 2",
     "pystache >= 0.5.4, < 1",
+    "requests >= 2, < 3",
     "scipy >= 0.1.0, < 2",
     "sawmill >= 0.2.1, < 1",
     "scikit-image >= 0.15.0, < 1",

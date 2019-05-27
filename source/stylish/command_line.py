@@ -1,7 +1,10 @@
 # :coding: utf-8
 
+import os
+import contextlib
 
 import click
+import requests
 
 import stylish
 import stylish.logging
@@ -35,6 +38,95 @@ def main(**kwargs):
 
     # Set verbosity level.
     stylish.logging.root.handlers["stderr"].filterer.min = kwargs["verbosity"]
+
+
+@main.group(
+    name="download",
+    help=(
+        """
+        Download necessary elements to train a style generator model
+        
+        
+        Example:
+        
+            \b
+            stylish download vgg19
+            stylish download coco2014 -o /tmp
+            
+        """
+    ),
+    short_help="Download necessary elements to train a model.",
+    chain=True,
+    context_settings=CONTEXT_SETTINGS
+)
+def stylish_download():
+    """Download necessary elements to train a style generator model."""
+    pass
+
+
+@stylish_download.command(
+    name="vgg19",
+    help="Download pre-trained Vgg19 model (549MB).",
+    context_settings=CONTEXT_SETTINGS
+)
+@click.option(
+    "-o", "--output",
+    help=(
+        "Output path to save the element (Current directory is used by default)"
+    ),
+    metavar="PATH",
+    type=click.Path(),
+)
+def stylish_download_vgg19(**kwargs):
+    """Download pre-trained Vgg19 model."""
+    logger = stylish.logging.Logger(__name__ + ".stylish_download_vgg19")
+
+    # Pre-trained model source.
+    name = "imagenet-vgg-verydeep-19.mat"
+    uri = "http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat"
+    path = os.path.join(kwargs.get("output") or os.getcwd(), name)
+
+    logger.info(
+        "Download pre-trained Vgg19 model:\n"
+        "    source: {}\n"
+        "    target: {}\n".format(uri, path)
+    )
+
+    # Download file.
+    _download(logger, uri, path)
+
+
+@stylish_download.command(
+    name="coco2014",
+    help="Download COCO 2014 Training dataset (13GB).",
+    context_settings=CONTEXT_SETTINGS
+)
+@click.option(
+    "-o", "--output",
+    help=(
+        "Output path to save the element (Current directory is used by default)"
+    ),
+    metavar="PATH",
+    type=click.Path(),
+)
+@click.pass_context
+def stylish_download_coco2014(click_context, **kwargs):
+    """Download COCO 2014 Training dataset."""
+    logger = stylish.logging.Logger(__name__ + ".stylish_download_coco2014")
+
+    # Pre-trained model source.
+    name = "train2014.zip"
+    uri = "http://images.cocodataset.org/zips/train2014.zip"
+    path = os.path.join(kwargs.get("output") or os.getcwd(), name)
+
+    logger.info(
+        "Download COCO 2014 Training dataset:\n"
+        "    source: {}\n"
+        "    target: {}\n".format(uri, path)
+    )
+
+    # Download file.
+    _download(logger, uri, path)
 
 
 @main.command(
@@ -125,3 +217,31 @@ def stylish_apply(**kwargs):
     )
 
     logger.info("Image generated: {}".format(path))
+
+
+def _download(logger, uri, path):
+    """Download a file from *uri* into *path*."""
+    response = requests.get(uri, allow_redirects=True, stream=True)
+    if response.status_code != requests.codes.ok:
+        logger.error("Unable to connect {0}".format(uri))
+        response.raise_for_status()
+
+    if os.path.exists(path):
+        if not click.confirm("Path already exists, overwrite?"):
+            logger.warning("Aborted!")
+            return
+
+        os.remove(path)
+
+    iterator = response.iter_content(chunk_size=1024)
+    total_length = int(response.headers.get("content-length"))
+
+    with contextlib.ExitStack() as stack:
+        progress = stack.enter_context(
+            click.progressbar(iterator, length=total_length)
+        )
+        stream = stack.enter_context(open(path, "wb"))
+
+        for chunk in progress:
+            stream.write(chunk)
+            progress.update(len(chunk))
