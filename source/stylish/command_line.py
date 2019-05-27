@@ -1,14 +1,16 @@
 # :coding: utf-8
 
 import os
+import shutil
 import contextlib
+import tempfile
 
 import click
 import requests
 
 import stylish
 import stylish.logging
-import stylish.model
+import stylish.vgg
 import stylish.filesystem
 from stylish import __version__
 
@@ -18,6 +20,38 @@ CONTEXT_SETTINGS = dict(
     max_content_width=90,
     help_option_names=["-h", "--help"],
 )
+
+
+def _validate_train(_, option, value):
+    """Custom validation for training options."""
+    if option.name == "style":
+        if not value or not os.path.isfile(value):
+            raise click.BadParameter(
+                "You need to indicate an image path to extract the style from."
+            )
+
+    elif option.name == "training":
+        if not value or not os.path.isdir(value):
+            raise click.BadParameter(
+                "You need a training dataset to extract the content from in "
+                "order to train a style generator model.\n"
+                "\n"
+                "You can use the following command to download the COCO "
+                "training dataset:\n"
+                "   >>> stylish download coco2014\n"
+            )
+
+    elif option.name == "vgg":
+        if not value or not os.path.isfile(value):
+            raise click.BadParameter(
+                "You need a pre-trained Vgg19 model in the MatConvNet data "
+                "format in order to train a style generator model.\n"
+                "\n"
+                "Please run the following command to download it:\n"
+                "   >>> stylish download vgg19\n"
+            )
+
+    return value
 
 
 @click.group(
@@ -109,8 +143,7 @@ def stylish_download_vgg19(**kwargs):
     metavar="PATH",
     type=click.Path(),
 )
-@click.pass_context
-def stylish_download_coco2014(click_context, **kwargs):
+def stylish_download_coco2014(**kwargs):
     """Download COCO 2014 Training dataset."""
     logger = stylish.logging.Logger(__name__ + ".stylish_download_coco2014")
 
@@ -139,38 +172,103 @@ def stylish_download_coco2014(click_context, **kwargs):
     help="Path to Vgg19 pre-trained model in the MatConvNet data format.",
     metavar="PATH",
     type=click.Path(),
-    required=True
+    callback=_validate_train
 )
 @click.option(
     "-s", "--style",
     help="Path to image from which the style features will be extracted.",
     metavar="PATH",
     type=click.Path(),
-    required=True
+    callback=_validate_train
 )
 @click.option(
-    "-c", "--content",
-    help=(
-        "Path to a folder containing images from which the content "
-        "features will be extracted."
-    ),
+    "-t", "--training",
+    help="Path to a training dataset folder (e.g. COCO 2014).",
     metavar="PATH",
     type=click.Path(),
-    required=True
+    callback=_validate_train
+)
+@click.option(
+    "-l", "--learning-rate",
+    help="Learning rate for optimizer.",
+    type=float,
+    default=stylish.LEARNING_RATE,
+    show_default=True
+)
+@click.option(
+    "-b", "--batch-size",
+    help="Batch size for training.",
+    type=int,
+    default=stylish.BATCH_SIZE,
+    show_default=True
+)
+@click.option(
+    "-e", "--epochs",
+    help="Epochs to train for.",
+    type=int,
+    default=stylish.EPOCHS_NUMBER,
+    show_default=True
+)
+@click.option(
+    "-cw", "--content-weight",
+    help="Weight of content in loss function.",
+    type=float,
+    default=stylish.CONTENT_WEIGHT,
+    show_default=True
+)
+@click.option(
+    "-sw", "--style-weight",
+    help="Weight of style in loss function.",
+    type=float,
+    default=stylish.STYLE_WEIGHT,
+    show_default=True
+)
+@click.option(
+    "-tw", "--tv-weight",
+    help="Weight of total variation term in loss function.",
+    type=float,
+    default=stylish.TV_WEIGHT,
+    show_default=True
 )
 @click.option(
     "-o", "--output",
     help="Path to folder in which the trained model will be saved.",
     metavar="PATH",
     type=click.Path(),
-    required=True
 )
 def stylish_train(**kwargs):
     """Train a style generator model."""
     logger = stylish.logging.Logger(__name__ + ".stylish_train")
 
+    style_path = kwargs.get("style")
+    training_path = kwargs.get("training")
+    vgg_path = kwargs.get("vgg")
+
+    # Create output path.
+    path = kwargs.get("output") or tempfile.gettempdir()
+    name = os.path.basename(style_path.split(".", 1)[0])
+    output_path = os.path.join(
+        path, stylish.filesystem.sanitise_value(name, case_sensitive=False)
+    )
+
+    if os.path.isdir(output_path):
+        if not click.confirm("Output path already exists, overwrite?"):
+            logger.warning("Aborted!")
+            return
+
+        shutil.rmtree(output_path)
+
+    stylish.filesystem.ensure_directory(output_path)
+
+    # Training style generator.
     model_path = stylish.train_model(
-        kwargs["style"], kwargs["content"], kwargs["output"], kwargs["vgg"]
+        style_path, training_path, output_path, vgg_path,
+        learning_rate=kwargs.get("learning_rate"),
+        batch_size=kwargs.get("batch_size"),
+        epochs=kwargs.get("epochs"),
+        content_weight=kwargs.get("content_weight"),
+        style_weight=kwargs.get("style_weight"),
+        tv_weight=kwargs.get("tv_weight"),
     )
 
     logger.info("Model trained: {}".format(model_path))
@@ -209,12 +307,14 @@ def stylish_apply(**kwargs):
     """Apply a style generator model to an image."""
     logger = stylish.logging.Logger(__name__ + ".stylish_apply")
 
+    model_path = kwargs.get("model")
+    input_path = kwargs.get("input")
+    output_path = kwargs.get("output") or tempfile.gettempdir()
+
     # Ensure that the output path exist and is accessible.
     stylish.filesystem.ensure_directory(kwargs["output"])
 
-    path = stylish.apply_model(
-        kwargs["model"], kwargs["input"], kwargs["output"]
-    )
+    path = stylish.apply_model(model_path, input_path, output_path)
 
     logger.info("Image generated: {}".format(path))
 

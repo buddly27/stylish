@@ -2,13 +2,14 @@
 
 import os
 import time
+import contextlib
 
 import tensorflow as tf
 import numpy as np
 
 import stylish.logging
 import stylish.filesystem
-import stylish.model
+import stylish.vgg
 import stylish.transform
 from stylish._version import __version__
 
@@ -22,134 +23,91 @@ EPOCHS_NUMBER = 2
 
 
 def train_model(
-    style_image_path, content_directory, output_directory, vgg_model_path
+    style_path, training_path, output_path, vgg_path,
+    learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, epochs=EPOCHS_NUMBER,
+    content_weight=CONTENT_WEIGHT, style_weight=STYLE_WEIGHT,
+    tv_weight=TV_WEIGHT,
 ):
     """Train and return style generator model path.
 
-    *style_image_path* should be the path to an image from which the style
-    features will be extracted.
+    *style_path* should be the path to an image from which the style features
+    will be extracted.
 
-    *content_directory* should be a folder containing images from which the
-    content features will be extracted.
+    *training_path* should be the training dataset folder.
 
-    *output_directory* should be the path where the trained model should be
+    *output_path* should be the path where the trained model should be
     saved.
 
-    *vgg_model_path* should be the path to the Vgg19 pre-trained model in the
+    *vgg_path* should be the path to the Vgg19 pre-trained model in the
     MatConvNet data format.
 
     """
     logger = stylish.logging.Logger(__name__ + ".train_model")
-    logger.info("Train model for style image: {}".format(style_image_path))
+    logger.info("Train model for style image: {}".format(style_path))
+
+    # Identify output model path
+    output_model = os.path.join(output_path, "model")
+    logger.info("Model will be exported in {}".format(output_model))
+
+    # Identify output log path (to view graph with Tensorboard)
+    output_log = os.path.join(output_path, "log")
+    logger.info("Log will be exported in {}".format(output_log))
+
+    # Identify output log path (to view graph with Tensorboard)
+    output_checkpoint = os.path.join(output_path, "checkpoints")
+    logger.info("Checkpoints will be exported in {}".format(output_checkpoint))
 
     # Extract weight and bias from pre-trained Vgg19 mapping.
-    vgg_mapping = stylish.model.extract_mapping(vgg_model_path)
+    vgg_mapping = stylish.vgg.extract_mapping(vgg_path)
 
-    # # Extract targeted images for training.
-    logger.info("Extract content images from '{}'".format(content_directory))
-    content_paths = stylish.filesystem.fetch_images(content_directory)
-    logger.info("{} content image(s) found.".format(len(content_paths)))
-
-    # Build the folder output.
-    style_name = os.path.basename(style_image_path.split(".", 1)[0])
-    root = os.path.join(
-        output_directory,
-        stylish.filesystem.sanitise_value(style_name, case_sensitive=False)
-    )
-    stylish.filesystem.ensure_directory(root)
-    logger.info("Output model and logs will be in: {}".format(root))
-
-    outputs = {
-        "model": os.path.join(root, "model"),
-        "checkpoints": os.path.join(root, "checkpoints"),
-        "log": os.path.join(root, "log"),
-    }
+    # Extract targeted images for training.
+    logger.info("Extract content images from '{}'".format(training_path))
+    training_data = stylish.filesystem.fetch_images(training_path)
+    logger.info("{} content image(s) found.".format(len(training_data)))
 
     # Pre-compute style features.
-    style_features = compute_style_features(style_image_path, vgg_mapping)
+    with create_session() as session:
+        style_feature = compute_style_feature(session, style_path, vgg_mapping)
 
-    # Initiate a default graph.
-    graph = tf.Graph()
-
-    # Initiate the batch shape.
-    batch_shape = (BATCH_SIZE, 256, 256, 3)
-
-    soft_config = tf.ConfigProto(allow_soft_placement=True)
-    soft_config.gpu_options.allow_growth = True
-
-    with graph.as_default(), tf.Session(config=soft_config) as session:
-        content_input = tf.placeholder(
+    with create_session() as session:
+        input_node = tf.placeholder(
             tf.float32, shape=(None, None, None, None), name="input"
         )
 
-        normalized_image = content_input - stylish.model.VGG19_MEAN
+        # Normalize input.
+        _input_node = input_node - stylish.vgg.VGG19_MEAN
 
-        with tf.name_scope("network1"):
-            stylish.model.loss_network(vgg_mapping, normalized_image)
+        # Build main network.
+        stylish.vgg.network(vgg_mapping, _input_node)
+        output_node = stylish.transform.network(_input_node/255.0)
 
-        content_layer = graph.get_tensor_by_name(
-            "network1/{}:0".format(stylish.model.CONTENT_LAYER)
+        # Build loss network.
+        loss = compute_loss(
+            session, output_node, style_feature, vgg_mapping,
+            batch_size=batch_size, content_weight=content_weight,
+            style_weight=style_weight, tv_weight=tv_weight,
+
         )
-        predictions = stylish.transform.network(content_input/255.0)
 
-        loss = compute_loss_ratio(
-            predictions, batch_shape, style_features, content_layer, vgg_mapping
-        )
-
-        optimizer = tf.train.AdamOptimizer(LEARNING_RATE)
-        training_op = optimizer.minimize(loss)
-
-        # Save log to visualize the graph with tensorboard.
-        tf.summary.FileWriter(outputs["log"], session.graph)
+        # Apply optimizer to attempt to reduce the loss.
+        optimizer = tf.train.AdamOptimizer(learning_rate)
+        training_node = optimizer.minimize(loss)
 
         # Start training.
         logger.info("Start training.")
 
-        session.run(tf.global_variables_initializer())
+        # Save log to visualize the graph with tensorboard.
+        tf.summary.FileWriter(output_log, session.graph)
 
-        saver = tf.train.Saver()
-
-        train_size = len(content_paths)
-
-        for epoch in range(EPOCHS_NUMBER):
-            logger.info("Start epoch #{}.".format(epoch))
-
-            start_time = time.time()
-
-            for index in range(train_size // BATCH_SIZE):
-                logger.debug("Start processing batch #{}.".format(index))
-                _start_time = time.time()
-
-                x_batch = get_next_batch(
-                    index, content_paths, BATCH_SIZE, batch_shape
-                )
-
-                session.run(training_op, feed_dict={content_input: x_batch})
-
-                _end_time = time.time()
-                _delta = _end_time - _start_time
-
-                message_batch_end = "Batch #{} processed [time: {}]."
-                if index % 500 == 0:
-                    logger.info(message_batch_end.format(index, _delta))
-                    saver.save(session, outputs["checkpoints"])
-
-                else:
-                    logger.debug(message_batch_end.format(index, _delta))
-
-            end_time = time.time()
-            delta = end_time - start_time
-
-            logger.info("Epoch #{} processed [time: {}].".format(epoch, delta))
-
-            # Save checkpoint.
-
-            saver.save(session, outputs["checkpoints"])
+        # Train the network on training data
+        optimize(
+            session, input_node, training_node, training_data,
+            output_checkpoint, batch_size=batch_size, epochs=epochs
+        )
 
         # Save model.
-
-        input_info = tf.saved_model.utils.build_tensor_info(content_input)
-        output_info = tf.saved_model.utils.build_tensor_info(predictions)
+        input_info = tf.saved_model.utils.build_tensor_info(input_node)
+        output_info = tf.saved_model.utils.build_tensor_info(output_node)
 
         signature = tf.saved_model.signature_def_utils.build_signature_def(
             inputs={"input": input_info},
@@ -157,15 +115,13 @@ def train_model(
             method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME
         )
 
-        builder = tf.saved_model.builder.SavedModelBuilder(outputs["model"])
+        builder = tf.saved_model.builder.SavedModelBuilder(output_model)
         builder.add_meta_graph_and_variables(
             session, [tf.saved_model.tag_constants.SERVING],
             signature_def_map={"predict_images": signature},
 
         )
         builder.save()
-
-        return outputs["model"]
 
 
 def apply_model(model_file, input_image, output_path):
@@ -191,13 +147,9 @@ def apply_model(model_file, input_image, output_path):
         output_path, "{}.jpg".format(os.path.basename(_input_image))
     )
 
-    # Initiate a default graph.
-    graph = tf.Graph()
+    with create_session() as session:
+        graph = tf.get_default_graph()
 
-    soft_config = tf.ConfigProto(allow_soft_placement=True)
-    soft_config.gpu_options.allow_growth = True
-
-    with graph.as_default(), tf.Session(config=soft_config) as session:
         tf.saved_model.loader.load(session, ["serve"], model_file)
         output_tensor = graph.get_tensor_by_name("output:0")
         input_tensor = graph.get_tensor_by_name("input:0")
@@ -219,11 +171,36 @@ def apply_model(model_file, input_image, output_path):
         return output_image
 
 
-def compute_style_features(path, vgg_mapping):
-    """Return computed style features map from *style_path*.
+@contextlib.contextmanager
+def create_session():
+    """Create a Tensorflow session and reset the default graph.
+
+    Should be used as follows::
+
+        >>> with create_session() as session:
+            ...
+
+    """
+    tf.reset_default_graph()
+
+    soft_config = tf.ConfigProto(allow_soft_placement=True)
+    soft_config.gpu_options.allow_growth = True
+
+    session = tf.Session(config=soft_config)
+
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+def compute_style_feature(session, path, vgg_mapping):
+    """Return computed style features mapping from *style_path*.
 
     The style feature map will be used to penalize the predicted image when it
     deviates from the style (colors, textures, common patterns, etc.).
+
+    *session* should be a Tensorflow session.
 
     *vgg_mapping* should gather all weight and bias matrices extracted from a
     pre-trained Vgg19 model (e.g. :func:`extract_mapping`).
@@ -235,133 +212,208 @@ def compute_style_features(path, vgg_mapping):
     # Extract image matrix from image.
     image_matrix = stylish.filesystem.load_image(path)
 
-    # Initiate a default graph.
-    graph = tf.Graph()
-
     # Initiate the shape of a 4-D Tensor for a list of images.
     image_shape = (1,) + image_matrix.shape
 
     # Initiate the style features.
-    style_features = {}
+    style_feature = {}
 
-    soft_config = tf.ConfigProto(allow_soft_placement=True)
-    soft_config.gpu_options.allow_growth = True
-
-    with graph.as_default(), tf.Session(config=soft_config) as session:
-        style_input = tf.placeholder(
-            tf.float32, shape=image_shape, name="style_input"
+    with tf.name_scope("style_feature"):
+        input_node = tf.placeholder(
+            tf.float32, shape=image_shape, name="input"
         )
-        normalized_image = style_input - stylish.model.VGG19_MEAN
+        _input_node = input_node - stylish.vgg.VGG19_MEAN
 
-        with tf.name_scope("network2"):
-            stylish.model.loss_network(vgg_mapping, normalized_image)
+        stylish.vgg.network(vgg_mapping, _input_node)
 
-        # Initiate input as a list of images.
-        images = np.array([image_matrix])
+    # Initiate input as a list of images.
+    images = np.array([image_matrix])
 
-        for layer_name, weight in stylish.model.STYLE_LAYERS:
-            logger.debug("Processing style layer '{}'".format(layer_name))
-            layer = graph.get_tensor_by_name("network2/{}:0".format(layer_name))
+    for layer_name, weight in stylish.vgg.STYLE_LAYERS:
+        logger.debug("Processing style layer '{}'".format(layer_name))
 
-            features = session.run(layer, feed_dict={style_input: images})
-            logger.debug("Layer '{}' processed.".format(layer_name))
+        graph = tf.get_default_graph()
+        layer = graph.get_tensor_by_name(
+            "style_feature/{}:0".format(layer_name)
+        )
 
-            features = np.reshape(features, (-1, features.shape[3]))
-            gram = np.matmul(features.T, features) / features.size
-            style_features[layer_name] = gram * weight
+        # Run session on style layer.
+        features = session.run(layer, feed_dict={input_node: images})
+        logger.debug("Layer '{}' processed.".format(layer_name))
 
-    return style_features
+        features = np.reshape(features, (-1, features.shape[3]))
+        gram = np.matmul(features.T, features) / features.size
+        style_feature[layer_name] = gram * weight
+
+    return style_feature
 
 
-def compute_loss_ratio(
-    predictions, batch_shape, style_features, content_layer, vgg_mapping
+def compute_loss(
+    session, input_node, style_features, vgg_mapping,
+    batch_size=BATCH_SIZE, content_weight=CONTENT_WEIGHT,
+    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT,
 ):
-    """Compute loss ratio from *predictions*.
+    """Create loss network from *input_node*.
 
-    *predictions* should be the output tensor of the
-    :func:`transformation network <stylish.transform.network>`.
+    *session* should be a Tensorflow session.
 
-    *batch_shape* should be the shape of the 4-D input image list tensor.
+    *input_node* should be the output tensor of the main graph.
 
     *style_features* should be the style features map :func:`extracted
     <compute_style_features>`.
-
-    *content_layer* should be the layer chosen to analyze the content features.
 
     *vgg_mapping* should gather all weight and bias matrices extracted from a
     pre-trained Vgg19 model (e.g. :func:`extract_mapping`).
 
     """
-    logger = stylish.logging.Logger(__name__ + ".compute_loss_ratio")
+    logger = stylish.logging.Logger(__name__ + ".compute_loss")
 
-    normalized_predictions = predictions - stylish.model.VGG19_MEAN
+    # Initiate the batch shape.
+    batch_shape = (batch_size, 256, 256, 3)
 
-    with tf.name_scope("network3"):
-        stylish.model.loss_network(vgg_mapping, normalized_predictions)
+    # Normalize predicted output.
+    _output_node = input_node - stylish.vgg.VGG19_MEAN
 
-    # Compute feature reconstruction loss from content feature map.
+    # Fetch content layer from main graph.
+    content_layer = session.graph.get_tensor_by_name(
+        "{}:0".format(stylish.vgg.CONTENT_LAYER)
+    )
 
+    # 1. Compute content loss.
     logger.info("Compute feature reconstruction loss ratio.")
 
-    content_shape = tf.cast(tf.shape(content_layer), tf.float32)
-    content_size = tf.reduce_prod(content_shape[1:]) * BATCH_SIZE
-    _content_layer = tf.get_default_graph().get_tensor_by_name(
-        "network3/{}:0".format(stylish.model.CONTENT_LAYER)
-    )
+    with tf.name_scope("loss_network"):
+        stylish.vgg.network(vgg_mapping, _output_node)
 
-    content_loss = CONTENT_WEIGHT * (
-        2 * tf.nn.l2_loss(_content_layer - content_layer) / content_size
-    )
+    with tf.name_scope("content_loss"):
+        content_shape = tf.cast(tf.shape(content_layer), tf.float32)
+        content_size = tf.reduce_prod(content_shape[1:]) * batch_size
+        _content_layer = session.graph.get_tensor_by_name(
+            "loss_network/{}:0".format(stylish.vgg.CONTENT_LAYER)
+        )
 
-    # Compute style reconstruction loss from style features map.
+        content_loss = content_weight * (
+            2 * tf.nn.l2_loss(_content_layer - content_layer) / content_size
+        )
 
+    # 2. Compute style loss.
     logger.info("Compute style reconstruction loss ratio.")
 
-    style_losses = []
+    with tf.name_scope("style_loss"):
+        style_losses = []
 
-    for layer_name, _ in stylish.model.STYLE_LAYERS:
-        layer = tf.get_default_graph().get_tensor_by_name(
-            "network3/{}:0".format(layer_name)
-        )
+        for layer_name, _ in stylish.vgg.STYLE_LAYERS:
+            layer = session.graph.get_tensor_by_name(
+                "loss_network/{}:0".format(layer_name)
+            )
 
-        shape = tf.shape(layer)
-        new_shape = [shape[0], shape[1] * shape[2], shape[3]]
-        tf_shape = tf.stack(new_shape)
+            shape = tf.shape(layer)
+            new_shape = [shape[0], shape[1] * shape[2], shape[3]]
+            tf_shape = tf.stack(new_shape)
 
-        feats = tf.reshape(layer, shape=tf_shape)
-        feats_transposed = tf.transpose(feats, perm=[0, 2, 1])
+            feats = tf.reshape(layer, shape=tf_shape)
+            feats_transposed = tf.transpose(feats, perm=[0, 2, 1])
 
-        size = tf.cast(shape[1] * shape[2] * shape[3], tf.float32)
-        grams = tf.matmul(feats_transposed, feats) / size
-        style_gram = style_features[layer_name]
-        style_losses.append(
-            2 * tf.nn.l2_loss(grams - style_gram) / style_gram.size
-        )
+            size = tf.cast(shape[1] * shape[2] * shape[3], tf.float32)
+            grams = tf.matmul(feats_transposed, feats) / size
+            style_gram = style_features[layer_name]
+            style_losses.append(
+                2 * tf.nn.l2_loss(grams - style_gram) / style_gram.size
+            )
 
-    style_loss = (STYLE_WEIGHT * tf.reduce_sum(style_losses) / BATCH_SIZE)
+        style_loss = (style_weight * tf.reduce_sum(style_losses) / batch_size)
 
-    # Compute total variation de-noising.
-
+    # 3. Compute total variation loss.
     logger.info("Compute total variation loss ratio.")
 
-    tv_y_size = tf.reduce_prod(
-        tf.cast(tf.shape(predictions[:, 1:, :, :]), tf.float32)[1:]
-    )
-    tv_x_size = tf.reduce_prod(
-        tf.cast(tf.shape(predictions[:, :, 1:, :]), tf.float32)[1:]
-    )
+    with tf.name_scope("tv_loss"):
+        tv_y_size = tf.reduce_prod(
+            tf.cast(tf.shape(input_node[:, 1:, :, :]), tf.float32)[1:]
+        )
+        tv_x_size = tf.reduce_prod(
+            tf.cast(tf.shape(input_node[:, :, 1:, :]), tf.float32)[1:]
+        )
 
-    y_tv = tf.nn.l2_loss(
-        predictions[:, 1:, :, :] - predictions[:, :batch_shape[1] - 1, :, :]
-    )
-    x_tv = tf.nn.l2_loss(
-        predictions[:, :, 1:, :] - predictions[:, :, :batch_shape[2] - 1, :]
-    )
-    total_variation_loss = (
-        TV_WEIGHT * 2 * (x_tv / tv_x_size + y_tv / tv_y_size) / BATCH_SIZE
-    )
+        y_tv = tf.nn.l2_loss(
+            input_node[:, 1:, :, :] - input_node[:, :batch_shape[1] - 1, :, :]
+        )
+        x_tv = tf.nn.l2_loss(
+            input_node[:, :, 1:, :] - input_node[:, :, :batch_shape[2] - 1, :]
+        )
+        total_variation_loss = (
+            tv_weight * 2 * (x_tv / tv_x_size + y_tv / tv_y_size) / batch_size
+        )
 
     return content_loss + style_loss + total_variation_loss
+
+
+def optimize(
+    session, input_node, training_node, training_data, output_checkpoint,
+    batch_size=BATCH_SIZE, epochs=EPOCHS_NUMBER
+):
+    """Optimize the loss for *training_node*.
+
+    *session* should be a Tensorflow session.
+
+    *input_node* should be the placeholder node in which should be feed each
+    image from *training_data* to train the model.
+
+    *training_node* should be the optimizer node that should be executed.
+
+    *training_data* should be a list containing all training images to feed to
+    the *input_node*.
+
+    *output_checkpoint* should be the path to export each checkpoints to
+    resume the training at any time. A checkpoint will be saved after each
+    epoch and at each 500 batches.
+
+    """
+    logger = stylish.logging.Logger(__name__ + ".optimize")
+
+    # Initiate the batch shape.
+    batch_shape = (batch_size, 256, 256, 3)
+
+    # Initiate all variables.
+    session.run(tf.global_variables_initializer())
+
+    # Initiate the saver to export the checkpoints.
+    saver = tf.train.Saver()
+
+    train_size = len(training_data)
+
+    for epoch in range(epochs):
+        logger.info("Start epoch #{}.".format(epoch))
+
+        start_time = time.time()
+
+        for index in range(train_size // batch_size):
+            logger.debug("Start processing batch #{}.".format(index))
+            _start_time = time.time()
+
+            x_batch = get_next_batch(
+                index, training_data, batch_size, batch_shape
+            )
+
+            session.run(training_node, feed_dict={input_node: x_batch})
+
+            _end_time = time.time()
+            _delta = _end_time - _start_time
+
+            message_batch_end = "Batch #{} processed [time: {}]."
+            if index % 500 == 0:
+                logger.info(message_batch_end.format(index, _delta))
+                saver.save(session, output_checkpoint)
+
+            else:
+                logger.debug(message_batch_end.format(index, _delta))
+
+        end_time = time.time()
+        delta = end_time - start_time
+
+        logger.info("Epoch #{} processed [time: {}].".format(epoch, delta))
+
+        # Save checkpoint.
+        saver.save(session, output_checkpoint)
 
 
 def get_next_batch(iteration, content_targets, batch_size, batch_shape):

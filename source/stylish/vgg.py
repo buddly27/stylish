@@ -118,7 +118,7 @@ def extract_mapping(path):
     return mapping
 
 
-def loss_network(vgg_mapping, input_tensor):
+def network(vgg_mapping, input_tensor):
     """Compute and return network from *mapping* with an *input_tensor*.
 
     *vgg_mapping* should gather all weight and bias matrices extracted from a

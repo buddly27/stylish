@@ -46,7 +46,7 @@ def fetch_images(path):
 
     images = []
 
-    for image in os.listdir(path):
+    for image in os.listdir(path)[:50]:
         images.append(os.path.join(path, image))
 
     return images
