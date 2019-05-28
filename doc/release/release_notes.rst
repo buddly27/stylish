@@ -5,7 +5,7 @@ Release Notes
 *************
 
 .. changelog::
-    :version: 0.1.5
+    :version: 0.2.0
     :released: 2019-05-27
 
     .. change:: new
