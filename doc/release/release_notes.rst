@@ -4,49 +4,84 @@
 Release Notes
 *************
 
-.. release:: 0.1.4
-    :date: 2018-05-19
+.. changelog::
+    :version: 0.1.5
+    :released: 2019-05-27
+
+    .. change:: new
+
+        Added ``stylish download`` command line option to download elements
+        necessary for the training (:term:`Vgg19` model and training data).
+
+    .. change:: new
+
+        Added :mod:`stylish.logging` to manage logger using `sawmill
+        <https://sawmill.readthedocs.io/en/latest/>`_ for convenience.
+
+    .. change:: changed
+
+        Removed :mod:`stylish.train` and moved logic within :mod:`stylish` to
+        increase code readability.
 
     .. change:: fixed
+        :tags: command line
+
+        Updated :mod:`stylish.command_line` to use
+        `click <https://pypi.org/project/click/>`_ instead of `argparse
+        <https://docs.python.org/3/library/argparse.html>`_ to manage the
+        command line interface for convenience.
+
+    .. change:: fixed
+
+        Fixed :func:`stylish.transform.instance_normalization` logic.
+
+.. changelog::
+    :version: 0.1.4
+    :released: 2018-05-19
+
+    .. change:: new
 
         Always use GPU for the training when available.
 
-.. release:: 0.1.3
-    :date: 2018-05-19
+.. changelog::
+    :version: 0.1.3
+    :released: 2018-05-19
 
     .. change:: fixed
 
-        Reformat :mod:`stylish.train` module to prevent fixing the shape of the
+        Updated :mod:`stylish.train` module to prevent fixing the shape of the
         input placeholder.
 
-.. release:: 0.1.2
-    :date: 2018-05-18
+.. changelog::
+    :version: 0.1.2
+    :released: 2018-05-18
 
     .. change:: fixed
 
-        Reformat :mod:`stylish.transform` module to let the size of the images
+        Updated :mod:`stylish.transform` module to let the size of the images
         unknown when processing the checkpoint.
 
     .. change:: fixed
 
-        Make the :func:`stylish.train.extract_model` function more verbose.
+        Updated :func:`stylish.train.extract_model` to increase verbosity.
 
-.. release:: 0.1.1
-    :date: 2018-05-09
+.. changelog::
+    :version: 0.1.1
+    :released: 2018-05-09
 
     .. change:: fixed
 
-        Fixed :option:`--content-target <stylish train --content-target>`
-        command line option as it should take a single value, not a list of
-        values.
+        Fixed ``--content-target`` command line option as it should take a
+        single value, not a list of values.
 
     .. change:: fixed
 
         Fixed :func:`stylish.train.extract_model` to pass the correct
         placeholder identifier to the session.
 
-.. release:: 0.1.0
-    :date: 2018-05-08
+.. changelog::
+    :version: 0.1.0
+    :released: 2018-05-08
 
     .. change:: new
 

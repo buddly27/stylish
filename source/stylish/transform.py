@@ -13,14 +13,14 @@ layers use 3 × 3 kernels.
 .. seealso::
 
     Johnson et al. (2016). Perceptual losses for real-time style transfer and
-    superresolution. :ref:`CoRR, abs/1603.08155
-    <https://arxiv.org/abs/1603.08155>`.
+    superresolution. `CoRR, abs/1603.08155
+    <https://arxiv.org/abs/1603.08155>`_.
 
 .. seealso::
 
     Ulyanov et al. (2017). Instance Normalization: The Missing Ingredient for
-    Fast Stylization. :ref:`CoRR, abs/1607.08022
-    <https://arxiv.org/abs/1607.08022>`.
+    Fast Stylization. `CoRR, abs/1607.08022
+    <https://arxiv.org/abs/1607.08022>`_.
 
 """
 
@@ -30,8 +30,8 @@ import tensorflow as tf
 def network(input_node):
     """Apply the image transformation network.
 
-    The last tensor of the graph will be returned. The network will be applied
-    to the current Tensorflow graph.
+    The last node of the graph will be returned. The network will be applied
+    to the current :term:`Tensorflow` graph.
 
     Example::
 
@@ -44,7 +44,7 @@ def network(input_node):
     It will be the input of the network.
 
     """
-    node = add_convolution_layer(
+    node = conv2d_layer(
         input_node,
         in_channels=3,
         out_channels=32,
@@ -52,7 +52,7 @@ def network(input_node):
         strides=1,
         activation=True
     )
-    node = add_convolution_layer(
+    node = conv2d_layer(
         node,
         in_channels=32,
         out_channels=64,
@@ -60,7 +60,7 @@ def network(input_node):
         strides=2,
         activation=True
     )
-    node = add_convolution_layer(
+    node = conv2d_layer(
         node,
         in_channels=64,
         out_channels=128,
@@ -69,35 +69,35 @@ def network(input_node):
         activation=True
     )
 
-    node = add_residual_block(
+    node = residual_block(
         node,
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
-    node = add_residual_block(
+    node = residual_block(
         node,
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
-    node = add_residual_block(
+    node = residual_block(
         node,
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
-    node = add_residual_block(
+    node = residual_block(
         node,
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
-    node = add_residual_block(
+    node = residual_block(
         node,
         in_channels=128,
         out_channels=128,
@@ -105,7 +105,7 @@ def network(input_node):
         strides=1
     )
 
-    node = add_deconvolution_layer(
+    node = conv2d_transpose_layer(
         node,
         in_channels=64,
         out_channels=128,
@@ -113,7 +113,7 @@ def network(input_node):
         strides=2,
         activation=True
     )
-    node = add_deconvolution_layer(
+    node = conv2d_transpose_layer(
         node,
         in_channels=32,
         out_channels=64,
@@ -121,7 +121,7 @@ def network(input_node):
         strides=2,
         activation=True
     )
-    node = add_convolution_layer(
+    node = conv2d_layer(
         node,
         in_channels=32,
         out_channels=3,
@@ -133,7 +133,7 @@ def network(input_node):
     return output
 
 
-def add_residual_block(
+def residual_block(
     input_node, in_channels, out_channels, kernel_size, strides
 ):
     """Apply a residual block to the network.
@@ -148,10 +148,10 @@ def add_residual_block(
     within the block.
 
     *strides* should indicate the stride of the sliding window for each
-    dimension of *input_tensor*.
+    dimension of *input_node*.
 
     """
-    node = add_convolution_layer(
+    node = conv2d_layer(
         input_node,
         in_channels=in_channels,
         out_channels=out_channels,
@@ -161,7 +161,7 @@ def add_residual_block(
 
     node = tf.nn.relu(node)
 
-    node = add_convolution_layer(
+    node = conv2d_layer(
         node,
         in_channels=in_channels,
         out_channels=out_channels,
@@ -171,7 +171,7 @@ def add_residual_block(
     return input_node + node
 
 
-def add_convolution_layer(
+def conv2d_layer(
     input_node, in_channels, out_channels, kernel_size, strides,
     activation=False
 ):
@@ -187,9 +187,9 @@ def add_convolution_layer(
     within the block.
 
     *strides* should indicate the stride of the sliding window for each
-    dimension of *input_tensor*.
+    dimension of *input_node*.
 
-    *activation* should indicate whether a 'relu' tensor should be added after
+    *activation* should indicate whether a 'relu' node should be added after
     the convolution layer.
 
     """
@@ -199,18 +199,18 @@ def add_convolution_layer(
     )
 
     strides_shape = [1, strides, strides, 1]
-    tensor = tf.nn.conv2d(
+    node = tf.nn.conv2d(
         input_node, weights_init, strides_shape, padding="SAME"
     )
 
-    tensor = add_instance_normalization(tensor, out_channels)
+    node = instance_normalization(node, out_channels)
     if activation:
-        tensor = tf.nn.relu(tensor)
+        node = tf.nn.relu(node)
 
-    return tensor
+    return node
 
 
-def add_deconvolution_layer(
+def conv2d_transpose_layer(
     input_node, in_channels, out_channels, kernel_size, strides,
     activation=None
 ):
@@ -226,9 +226,9 @@ def add_deconvolution_layer(
     within the block.
 
     *strides* should indicate the stride of the sliding window for each
-    dimension of *input_tensor*.
+    dimension of *input_node*.
 
-    *activation* should indicate whether a 'relu' tensor should be added after
+    *activation* should indicate whether a 'relu' node should be added after
     the convolution layer.
 
     """
@@ -249,14 +249,14 @@ def add_deconvolution_layer(
         input_node, weights_init, tf_shape, strides_shape, padding="SAME"
     )
 
-    node = add_instance_normalization(node, in_channels)
+    node = instance_normalization(node, in_channels)
     if activation is not None:
         node = tf.nn.relu(node)
 
     return node
 
 
-def add_instance_normalization(input_node, channels):
+def instance_normalization(input_node, channels):
     """Apply an instance normalization to the network.
 
     *input_node* will be the input of the layer.
@@ -264,8 +264,8 @@ def add_instance_normalization(input_node, channels):
     .. seealso::
 
         Ulyanov et al. (2017). Instance Normalization: The Missing Ingredient
-        for Fast Stylization. :ref:`CoRR, abs/1607.08022
-        <https://arxiv.org/abs/1607.08022>`.
+        for Fast Stylization. `CoRR, abs/1607.08022
+        <https://arxiv.org/abs/1607.08022>`_.
 
     """
     mu, sigma_sq = tf.nn.moments(input_node, [1, 2], keep_dims=True)

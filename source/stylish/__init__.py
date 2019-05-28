@@ -15,31 +15,63 @@ from stylish._version import __version__
 
 
 BATCH_SIZE = 4
+EPOCHS_NUMBER = 2
 CONTENT_WEIGHT = 7.5e0
 STYLE_WEIGHT = 1e2
 TV_WEIGHT = 2e2
 LEARNING_RATE = 1e-3
-EPOCHS_NUMBER = 2
 
 
 def train_model(
     style_path, training_path, output_path, vgg_path,
-    learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, epochs=EPOCHS_NUMBER,
-    content_weight=CONTENT_WEIGHT, style_weight=STYLE_WEIGHT,
-    tv_weight=TV_WEIGHT,
+    learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
+    epoch_number=EPOCHS_NUMBER, content_weight=CONTENT_WEIGHT,
+    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT,
 ):
-    """Train and return style generator model path.
+    """Train a style generator model for *style_path* on *training_path*.
+
+    The path to the :term:`Tensorflow` model generated will be returned.
+
+    The training duration can vary depending on the :term:`Hyperparameters
+    <Hyperparameter>` specified (epoch number, batch size, etc.), the power
+    of your workstation and the number of images in the training data.
+
+    Usage example::
+
+        >>> train_model(
+        ...    "/path/to/style_image.jpg",
+        ...    "/path/to/training_data/",
+        ...    "/path/to/output_model/",
+        ...    "/path/to/vgg_model.mat"
+        ... )
 
     *style_path* should be the path to an image from which the style features
     will be extracted.
 
     *training_path* should be the training dataset folder.
 
-    *output_path* should be the path where the trained model should be
-    saved.
+    *output_path* should be the path where the trained model should be saved.
 
-    *vgg_path* should be the path to the Vgg19 pre-trained model in the
-    MatConvNet data format.
+    *vgg_path* should be the path to the :term:`Vgg19` pre-trained model in the
+    :term:`MatConvNet` data format.
+
+    *learning_rate* should indicate the :term:`Learning Rate` to minimize the
+    loss. Default is :data:`LEARNING_RATE`.
+
+    *batch_size* should indicate the number of training examples utilized in one
+    iteration. Default is :data:`BATCH_SIZE`.
+
+    *epoch_number* should indicate the number of time that the *training data*
+    should be trained. Default is :data:`EPOCHS_NUMBER`.
+
+    *content_weight* should indicate the weight of the content for the loss
+    computation. Default is :data:`CONTENT_WEIGHT`.
+
+    *style_weight* should indicate the weight of the style for the loss
+    computation. Default is :data:`STYLE_WEIGHT`.
+
+    *tv_weight* should indicate the weight of the total variation term for the
+    loss computation. Default is :data:`TV_WEIGHT`.
 
     """
     logger = stylish.logging.Logger(__name__ + ".train_model")
@@ -102,7 +134,7 @@ def train_model(
         # Train the network on training data
         optimize(
             session, input_node, training_node, training_data,
-            output_checkpoint, batch_size=batch_size, epochs=epochs
+            output_checkpoint, batch_size=batch_size, epoch_number=epoch_number
         )
 
         # Save model.
@@ -124,13 +156,23 @@ def train_model(
         builder.save()
 
 
-def apply_model(model_file, input_image, output_path):
-    """Transform input image with style generator model and return result.
+def apply_model(model_path, input_path, output_path):
+    """Apply style generator *model_path* for input image.
 
-    *model_file* should be the path to a :term:`Tensorflow` checkpoint model
-    file path.
+    Return path to image generated.
 
-    *input_image* should be the path to an image to transform.
+    Usage example::
+
+        >>> apply_model(
+        ...    "/path/to/saved_model/",
+        ...    "/path/to/input_image.jpg",
+        ...    "/path/to/output/"
+        ... )
+
+    *model_path* should be the path to a :term:`Tensorflow` model path that has
+    been :func:`trained <train_model>` on an other image to extract its style.
+
+    *input_path* should be the path to an image to apply the *model_path* to.
 
     *output_path* should be the folder where the output image should be saved.
 
@@ -139,10 +181,10 @@ def apply_model(model_file, input_image, output_path):
     logger.info("Apply style generator model.")
 
     # Extract image matrix from input image.
-    image_matrix = stylish.filesystem.load_image(input_image)
+    image_matrix = stylish.filesystem.load_image(input_path)
 
     # Compute output image path.
-    _input_image, _ = os.path.splitext(input_image)
+    _input_image, _ = os.path.splitext(input_path)
     output_image = os.path.join(
         output_path, "{}.jpg".format(os.path.basename(_input_image))
     )
@@ -150,14 +192,14 @@ def apply_model(model_file, input_image, output_path):
     with create_session() as session:
         graph = tf.get_default_graph()
 
-        tf.saved_model.loader.load(session, ["serve"], model_file)
-        output_tensor = graph.get_tensor_by_name("output:0")
-        input_tensor = graph.get_tensor_by_name("input:0")
+        tf.saved_model.loader.load(session, ["serve"], model_path)
+        input_node = graph.get_tensor_by_name("input:0")
+        output_node = graph.get_tensor_by_name("output:0")
 
         start_time = time.time()
 
         predictions = session.run(
-            output_tensor, feed_dict={input_tensor: np.array([image_matrix])}
+            output_node, feed_dict={input_node: np.array([image_matrix])}
         )
         stylish.filesystem.save_image(predictions[0], output_image)
 
@@ -173,7 +215,7 @@ def apply_model(model_file, input_image, output_path):
 
 @contextlib.contextmanager
 def create_session():
-    """Create a Tensorflow session and reset the default graph.
+    """Create a :term:`Tensorflow` session and reset the default graph.
 
     Should be used as follows::
 
@@ -195,19 +237,34 @@ def create_session():
 
 
 def compute_style_feature(session, path, vgg_mapping):
-    """Return computed style features mapping from *style_path*.
+    """Return computed style features mapping from image *path*.
 
     The style feature map will be used to penalize the predicted image when it
     deviates from the style (colors, textures, common patterns, etc.).
 
-    *session* should be a Tensorflow session.
+    Usage example::
+
+        >>> compute_style_feature(session, path, vgg_mapping)
+
+        {
+            "conv1_1": numpy.array([...]),
+            "conv2_1": numpy.array([...]),
+            "conv3_1": numpy.array([...]),
+            "conv4_1": numpy.array([...]),
+            "conv5_1": numpy.array([...])
+        }
+
+    *session* should be a :term:`Tensorflow` session.
+
+    *path* should be the path to an image from which the style features will be
+    extracted.
 
     *vgg_mapping* should gather all weight and bias matrices extracted from a
-    pre-trained Vgg19 model (e.g. :func:`extract_mapping`).
+    pre-trained :term:`Vgg19` model (e.g. :func:`extract_mapping`).
 
     """
-    logger = stylish.logging.Logger(__name__ + ".compute_style_features")
-    logger.info("Extract style features from path: {}".format(path))
+    logger = stylish.logging.Logger(__name__ + ".compute_style_feature")
+    logger.info("Extract style feature mapping from path: {}".format(path))
 
     # Extract image matrix from image.
     image_matrix = stylish.filesystem.load_image(path)
@@ -233,12 +290,12 @@ def compute_style_feature(session, path, vgg_mapping):
         logger.debug("Processing style layer '{}'".format(layer_name))
 
         graph = tf.get_default_graph()
-        layer = graph.get_tensor_by_name(
+        layer_node = graph.get_tensor_by_name(
             "style_feature/{}:0".format(layer_name)
         )
 
         # Run session on style layer.
-        features = session.run(layer, feed_dict={input_node: images})
+        features = session.run(layer_node, feed_dict={input_node: images})
         logger.debug("Layer '{}' processed.".format(layer_name))
 
         features = np.reshape(features, (-1, features.shape[3]))
@@ -255,7 +312,7 @@ def compute_loss(
 ):
     """Create loss network from *input_node*.
 
-    *session* should be a Tensorflow session.
+    *session* should be a :term:`Tensorflow` session.
 
     *input_node* should be the output tensor of the main graph.
 
@@ -263,7 +320,19 @@ def compute_loss(
     <compute_style_features>`.
 
     *vgg_mapping* should gather all weight and bias matrices extracted from a
-    pre-trained Vgg19 model (e.g. :func:`extract_mapping`).
+    pre-trained :term:`Vgg19` model (e.g. :func:`extract_mapping`).
+
+    *batch_size* should indicate the number of training examples utilized in one
+    iteration. Default is :data:`BATCH_SIZE`.
+
+    *content_weight* should indicate the weight of the content. Default is
+    :data:`CONTENT_WEIGHT`.
+
+    *style_weight* should indicate the weight of the style. Default is
+    :data:`STYLE_WEIGHT`.
+
+    *tv_weight* should indicate the weight of the total variation term. Default
+    is :data:`TV_WEIGHT`.
 
     """
     logger = stylish.logging.Logger(__name__ + ".compute_loss")
@@ -349,11 +418,11 @@ def compute_loss(
 
 def optimize(
     session, input_node, training_node, training_data, output_checkpoint,
-    batch_size=BATCH_SIZE, epochs=EPOCHS_NUMBER
+    batch_size=BATCH_SIZE, epoch_number=EPOCHS_NUMBER
 ):
-    """Optimize the loss for *training_node*.
+    """Optimize the loss for *input_node*.
 
-    *session* should be a Tensorflow session.
+    *session* should be a :term:`Tensorflow` session.
 
     *input_node* should be the placeholder node in which should be feed each
     image from *training_data* to train the model.
@@ -366,6 +435,12 @@ def optimize(
     *output_checkpoint* should be the path to export each checkpoints to
     resume the training at any time. A checkpoint will be saved after each
     epoch and at each 500 batches.
+
+    *batch_size* should indicate the number of training examples utilized in one
+    iteration. Default is :data:`BATCH_SIZE`.
+
+    *epoch_number* should indicate the number of time that the *training data*
+    should be trained. Default is :data:`EPOCHS_NUMBER`.
 
     """
     logger = stylish.logging.Logger(__name__ + ".optimize")
@@ -381,7 +456,7 @@ def optimize(
 
     train_size = len(training_data)
 
-    for epoch in range(epochs):
+    for epoch in range(epoch_number):
         logger.info("Start epoch #{}.".format(epoch))
 
         start_time = time.time()
@@ -417,7 +492,7 @@ def optimize(
 
 
 def get_next_batch(iteration, content_targets, batch_size, batch_shape):
-    """Return Numpy array with image matrices according to *iteration* index.
+    """Return array with image matrices according to *iteration* index.
 
     *iteration* should be an integer specifying the current portion of the
     images to return.

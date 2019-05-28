@@ -36,7 +36,7 @@ INSTALL_REQUIRES = [
     "tensorflow >= 1, < 2"
 ]
 DOC_REQUIRES = [
-    "lowdown >= 0.1.0, < 2",
+    "changelog >= 0.4, < 1",
     "sphinx >= 1.6, < 2",
     "sphinx-click>=1.2.0",
     "sphinx_rtd_theme >= 0.1.6, < 1"

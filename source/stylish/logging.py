@@ -127,9 +127,6 @@ class Logger(sawmill.logger.classic.Classic):
         """Prepare and return a log for emission."""
         log = super(Logger, self).prepare(*args, **kw)
 
-        if "username" not in log:
-            log["username"] = getpass.getuser()
-
         if "date" not in log:
             log["date"] = datetime.datetime.now().strftime("%Y_%m_%d-%H_%M_%S")
 

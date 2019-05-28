@@ -4,7 +4,7 @@
 Stylish
 #######
 
-Style transfer using deep neural network.
+Style transfer using :term:`Deep Neural Network`.
 
 .. toctree::
     :maxdepth: 1

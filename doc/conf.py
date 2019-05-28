@@ -20,8 +20,8 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "sphinxcontrib.autoprogram",
-    "lowdown"
+    "sphinx_click.ext",
+    "changelog"
 ]
 
 
@@ -33,7 +33,7 @@ master_doc = "index"
 
 # General information about the project.
 project = u"Stylish"
-copyright = u"2018, Jeremy Retailleau"
+copyright = u"2019, Jeremy Retailleau"
 
 # Version
 with open(
@@ -86,7 +86,8 @@ def autodoc_skip(app, what, name, obj, skip, options):
 # -- Intersphinx --------------------------------------------------------------
 
 intersphinx_mapping = {
-    "python": ("http://docs.python.org/", None)
+    "python": ("http://docs.python.org/", None),
+    "sawmill": ("https://sawmill.readthedocs.io/en/stable/", None),
 }
 
 

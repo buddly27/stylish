@@ -265,7 +265,7 @@ def stylish_train(**kwargs):
         style_path, training_path, output_path, vgg_path,
         learning_rate=kwargs.get("learning_rate"),
         batch_size=kwargs.get("batch_size"),
-        epochs=kwargs.get("epochs"),
+        epoch_number=kwargs.get("epochs"),
         content_weight=kwargs.get("content_weight"),
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),

@@ -1,8 +1,8 @@
 # :coding: utf-8
 
-"""Training model computation module from a Vgg19 model.
+"""Training model computation module from a :term:`Vgg19` model.
 
-The Vgg19 model pre-trained for image classification is used as a loss
+The :term:`Vgg19` model pre-trained for image classification is used as a loss
 network in order to define perceptual loss functions that measure perceptual
 differences in content and style between images.
 
@@ -11,18 +11,18 @@ The loss network remains fixed during the training process.
 .. seealso::
 
     Johnson et al. (2016). Perceptual losses for real-time style transfer and
-    superresolution. :ref:`CoRR, abs/1603.08155
-    <https://arxiv.org/abs/1603.08155>`.
+    superresolution. `CoRR, abs/1603.08155
+    <https://arxiv.org/abs/1603.08155>`_.
 
 .. seealso::
 
     Simonyan et al. (2014). Very Deep Convolutional Networks for
-    Large-Scale Image Recognition. :ref:`CoRR, abs/1409.1556
-    <https://arxiv.org/abs/1409.1556>`.
+    Large-Scale Image Recognition. `CoRR, abs/1409.1556
+    <https://arxiv.org/abs/1409.1556>`_.
 
-    And the corresponding :ref:`Vgg19 pre-trained model
-    <http://www.robots.ox.ac.uk/~vgg/research/very_deep/>` in the MatConvNet
-    data format.
+    And the corresponding `Vgg19 pre-trained model
+    <http://www.robots.ox.ac.uk/~vgg/research/very_deep/>`_ in the
+    :term:`MatConvNet` data format.
 
 """
 
@@ -50,7 +50,8 @@ CONTENT_LAYER = "conv4_2"
 
 
 def extract_mapping(path):
-    """Compute and return weights and biases mapping from Vgg19 model *path*.
+    """Compute and return weights and biases mapping from :term:`Vgg19` model
+    *path*.
 
     The mapping should be returned in the form of::
 
@@ -66,8 +67,8 @@ def extract_mapping(path):
             ...
         }
 
-    *path* should be the path to the Vgg19 pre-trained model in the
-    MatConvNet data format.
+    *path* should be the path to the :term:`Vgg19` pre-trained model in the
+    :term:`MatConvNet` data format.
 
     .. seealso::
 
@@ -118,18 +119,18 @@ def extract_mapping(path):
     return mapping
 
 
-def network(vgg_mapping, input_tensor):
-    """Compute and return network from *mapping* with an *input_tensor*.
+def network(vgg_mapping, input_node):
+    """Compute and return network from *mapping* with an *input_node*.
 
     *vgg_mapping* should gather all weight and bias matrices extracted from a
-    pre-trained Vgg19 model (e.g. :func:`extract_mapping`).
+    pre-trained :term:`Vgg19` model (e.g. :func:`extract_mapping`).
 
-    *input_tensor* should be a 3-D Tensor representing an image of undefined
+    *input_node* should be a 3-D Tensor representing an image of undefined
     size with 3 channels (Red, Green and Blue). It will be the input of the
     graph model.
 
     """
-    layer = conv2d_layer("conv1_1", vgg_mapping, input_tensor)
+    layer = conv2d_layer("conv1_1", vgg_mapping, input_node)
     layer = conv2d_layer("conv1_2", vgg_mapping, layer)
     layer = pool_layer("pool1", layer)
 
@@ -157,7 +158,7 @@ def network(vgg_mapping, input_tensor):
     return layer
 
 
-def conv2d_layer(name, vgg_mapping, input_tensor):
+def conv2d_layer(name, vgg_mapping, input_node):
     """Add 2D convolution layer named *name* to *mapping*.
 
     The layer returned should contain:
@@ -170,9 +171,9 @@ def conv2d_layer(name, vgg_mapping, input_tensor):
     *name* should be the name of the convolution layer.
 
     *vgg_mapping* should gather all weight and bias matrices extracted from a
-    pre-trained Vgg19 model (e.g. :func:`extract_mapping`).
+    pre-trained :term:`Vgg19` model (e.g. :func:`extract_mapping`).
 
-    *input_tensor* should be a Tensor that will be set as the input of the
+    *input_node* should be a Tensor that will be set as the input of the
     convolution layer.
 
     Raise :exc:`KeyError` if the weight and bias matrices cannot be
@@ -185,7 +186,7 @@ def conv2d_layer(name, vgg_mapping, input_tensor):
     bias = vgg_mapping[name]["bias"]
 
     layer = tf.nn.conv2d(
-        input_tensor,
+        input_node,
         filter=tf.constant(weight),
         strides=[1, 1, 1, 1],
         padding="SAME",
@@ -201,7 +202,7 @@ def conv2d_layer(name, vgg_mapping, input_tensor):
     return layer
 
 
-def pool_layer(name, input_tensor):
+def pool_layer(name, input_node):
     """Return max pooling layer named *name*.
 
     The layer returned should contain:
@@ -211,14 +212,14 @@ def pool_layer(name, input_tensor):
 
     *name* should be the name of the max layer.
 
-    *input_tensor* should be a Tensor that will be set as the input of the
+    *input_node* should be a Tensor that will be set as the input of the
     max layer.
 
     """
     logger = stylish.logging.Logger(__name__ + ".pool_layer")
 
     layer = tf.nn.max_pool(
-        input_tensor,
+        input_node,
         ksize=[1, 2, 2, 1],
         strides=[1, 2, 2, 1],
         padding="SAME",

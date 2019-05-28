@@ -2,7 +2,7 @@
 Stylish
 #######
 
-Style transfer using deep neural network.
+Style transfer using Deep Neural Network.
 
 **********
 References

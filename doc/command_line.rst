@@ -4,5 +4,6 @@
 Command line
 ************
 
-.. autoprogram:: stylish.command_line:construct_parser()
+.. click:: stylish.command_line:main
     :prog: stylish
+    :show-nested:
