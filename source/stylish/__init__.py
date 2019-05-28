@@ -14,11 +14,22 @@ import stylish.transform
 from stylish._version import __version__
 
 
+#: Default batch size used for training.
 BATCH_SIZE = 4
+
+#: Default epoch number used for training.
 EPOCHS_NUMBER = 2
-CONTENT_WEIGHT = 7.5e0
-STYLE_WEIGHT = 1e2
-TV_WEIGHT = 2e2
+
+#: Default weight of the content for the loss computation.
+CONTENT_WEIGHT = 7.5
+
+#: Default weight of the style for the loss computation.
+STYLE_WEIGHT = 100.0
+
+#: Default weight of the total variation term for the loss computation.
+TV_WEIGHT = 200.0
+
+#: Default :term:`Learning Rate`.
 LEARNING_RATE = 1e-3
 
 
