@@ -41,8 +41,6 @@ def train_model(
 ):
     """Train a style generator model for *style_path* on *training_path*.
 
-    The path to the :term:`Tensorflow` model generated will be returned.
-
     The training duration can vary depending on the :term:`Hyperparameters
     <Hyperparameter>` specified (epoch number, batch size, etc.), the power
     of your workstation and the number of images in the training data.
@@ -125,7 +123,7 @@ def train_model(
         output_node = stylish.transform.network(_input_node/255.0)
 
         # Build loss network.
-        loss = compute_loss(
+        loss_mapping = compute_loss(
             session, output_node, style_feature, vgg_mapping,
             batch_size=batch_size, content_weight=content_weight,
             style_weight=style_weight, tv_weight=tv_weight,
@@ -134,18 +132,16 @@ def train_model(
 
         # Apply optimizer to attempt to reduce the loss.
         optimizer = tf.train.AdamOptimizer(learning_rate)
-        training_node = optimizer.minimize(loss)
+        training_node = optimizer.minimize(loss_mapping["total"])
 
         # Start training.
         logger.info("Start training.")
 
-        # Save log to visualize the graph with tensorboard.
-        tf.summary.FileWriter(output_log, session.graph)
-
         # Train the network on training data
         optimize(
-            session, input_node, training_node, training_data,
-            output_checkpoint, batch_size=batch_size, epoch_number=epoch_number
+            session, training_node, training_data, input_node, loss_mapping,
+            output_log, output_checkpoint, batch_size=batch_size,
+            epoch_number=epoch_number
         )
 
         # Save model.
@@ -323,6 +319,20 @@ def compute_loss(
 ):
     """Create loss network from *input_node*.
 
+    Return a mapping with the content loss, the style loss, the total variation
+    loss and the total loss nodes.
+
+    Usage example::
+
+        >>> compute_loss(session, input_node, style_features, vgg_mapping)
+
+        {
+            "total": tf.Tensor(...),
+            "content": tf.Tensor(...),
+            "style": tf.Tensor(...),
+            "total_variation": tf.Tensor(...)
+        }
+
     *session* should be a :term:`Tensorflow` session.
 
     *input_node* should be the output tensor of the main graph.
@@ -424,24 +434,35 @@ def compute_loss(
             tv_weight * 2 * (x_tv / tv_x_size + y_tv / tv_y_size) / batch_size
         )
 
-    return content_loss + style_loss + total_variation_loss
+    return {
+        "total": content_loss + style_loss + total_variation_loss,
+        "content": content_loss,
+        "style": style_loss,
+        "total_variation": total_variation_loss
+    }
 
 
 def optimize(
-    session, input_node, training_node, training_data, output_checkpoint,
-    batch_size=BATCH_SIZE, epoch_number=EPOCHS_NUMBER
+    session, training_node, training_data, input_node, loss_mapping,
+    output_log, output_checkpoint, batch_size=BATCH_SIZE,
+    epoch_number=EPOCHS_NUMBER
 ):
-    """Optimize the loss for *input_node*.
+    """Optimize the loss for *training_node*.
 
     *session* should be a :term:`Tensorflow` session.
-
-    *input_node* should be the placeholder node in which should be feed each
-    image from *training_data* to train the model.
 
     *training_node* should be the optimizer node that should be executed.
 
     *training_data* should be a list containing all training images to feed to
     the *input_node*.
+
+    *input_node* should be the placeholder node in which should be feed each
+    image from *training_data* to train the model.
+
+    *loss_mapping* should be a mapping of all loss nodes as returned by
+    :func:`compute_loss`.
+
+    *output_log* should be the path to export the logs.
 
     *output_checkpoint* should be the path to export each checkpoints to
     resume the training at any time. A checkpoint will be saved after each
@@ -465,38 +486,63 @@ def optimize(
     # Initiate the saver to export the checkpoints.
     saver = tf.train.Saver()
 
+    # Save log to visualize the graph with tensorboard.
+    train_writer = tf.summary.FileWriter(output_log, session.graph)
+    total_cost = tf.summary.scalar(name="Total", tensor=loss_mapping["total"])
+    content = tf.summary.scalar(name="Content", tensor=loss_mapping["content"])
+    style = tf.summary.scalar(name="Style", tensor=loss_mapping["style"])
+    total_variation = tf.summary.scalar(
+        name="Total Variation", tensor=loss_mapping["total_variation"]
+    )
+
+    step = 0
+
     train_size = len(training_data)
 
     for epoch in range(epoch_number):
         logger.info("Start epoch #{}.".format(epoch))
 
-        start_time = time.time()
+        start_time_epoch = time.time()
 
         for index in range(train_size // batch_size):
             logger.debug("Start processing batch #{}.".format(index))
-            _start_time = time.time()
+            start_time_batch = time.time()
 
             x_batch = get_next_batch(
                 index, training_data, batch_size, batch_shape
             )
 
-            session.run(training_node, feed_dict={input_node: x_batch})
+            # Execute the nodes within the session.
+            _, _total_cost, _content, _style, _total_variation = session.run(
+                [training_node, total_cost, content, style, total_variation],
+                feed_dict={input_node: x_batch}
+            )
 
-            _end_time = time.time()
-            _delta = _end_time - _start_time
+            train_writer.add_summary(_total_cost, step)
+            train_writer.add_summary(_content, step)
+            train_writer.add_summary(_style, step)
+            train_writer.add_summary(_total_variation, step)
+            step += 1
 
-            message_batch_end = "Batch #{} processed [time: {}]."
+            end_time_batch = time.time()
+
+            message = (
+                "Batch #{} processed [time: {}]"
+                .format(index, end_time_batch - start_time_batch)
+            )
+
             if index % 500 == 0:
-                logger.info(message_batch_end.format(index, _delta))
+                logger.info(message)
                 saver.save(session, output_checkpoint)
 
             else:
-                logger.debug(message_batch_end.format(index, _delta))
+                logger.debug(message)
 
-        end_time = time.time()
-        delta = end_time - start_time
-
-        logger.info("Epoch #{} processed [time: {}].".format(epoch, delta))
+        end_time_epoch = time.time()
+        logger.info(
+            "Epoch #{} processed [time: {}]"
+            .format(epoch, end_time_epoch - start_time_epoch)
+        )
 
         # Save checkpoint.
         saver.save(session, output_checkpoint)
