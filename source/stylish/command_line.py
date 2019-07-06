@@ -189,6 +189,11 @@ def stylish_download_coco2014(**kwargs):
     callback=_validate_train
 )
 @click.option(
+    "--limit",
+    help="Maximum number of files to use from the training dataset folder.",
+    type=int
+)
+@click.option(
     "-l", "--learning-rate",
     help="Learning rate for optimizer.",
     type=float,
@@ -269,6 +274,7 @@ def stylish_train(**kwargs):
         content_weight=kwargs.get("content_weight"),
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),
+        limit_training=kwargs.get("limit")
     )
 
 

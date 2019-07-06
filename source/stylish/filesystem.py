@@ -39,14 +39,19 @@ def save_image(image_matrix, path):
     imageio.imwrite(path, image)
 
 
-def fetch_images(path):
-    """Return list of image paths from *path*."""
+def fetch_images(path, limit=None):
+    """Return list of image paths from *path*.
+
+    *limit* should be the maximum number of files to fetch from *path*. By
+    default, all files are fetched.
+
+    """
     if not os.path.isdir(path) or not os.access(path, os.R_OK):
         raise OSError("The image folder '{}' is incorrect".format(path))
 
     images = []
 
-    for image in os.listdir(path):
+    for image in os.listdir(path)[:limit]:
         images.append(os.path.join(path, image))
 
     return images

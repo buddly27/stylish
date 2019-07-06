@@ -37,7 +37,7 @@ def train_model(
     style_path, training_path, output_path, vgg_path,
     learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
     epoch_number=EPOCHS_NUMBER, content_weight=CONTENT_WEIGHT,
-    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT,
+    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, limit_training=None
 ):
     """Train a style generator model for *style_path* on *training_path*.
 
@@ -82,6 +82,10 @@ def train_model(
     *tv_weight* should indicate the weight of the total variation term for the
     loss computation. Default is :data:`TV_WEIGHT`.
 
+    *limit_training* should be the maximum number of files to use from the
+    training dataset folder. By default, all files from the training dataset
+    folder are used.
+
     """
     logger = stylish.logging.Logger(__name__ + ".train_model")
     logger.info("Train model for style image: {}".format(style_path))
@@ -103,7 +107,9 @@ def train_model(
 
     # Extract targeted images for training.
     logger.info("Extract content images from '{}'".format(training_path))
-    training_data = stylish.filesystem.fetch_images(training_path)
+    training_data = stylish.filesystem.fetch_images(
+        training_path, limit=limit_training
+    )
     logger.info("{} content image(s) found.".format(len(training_data)))
 
     # Pre-compute style features.
