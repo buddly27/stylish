@@ -5,6 +5,20 @@ Release Notes
 *************
 
 .. changelog::
+    :version: 0.3.0
+    :released: 2019-07-05
+
+    .. change:: new
+
+        Added ``stylish train --limit`` option to set a maximum number of files
+        to use from the training dataset folder.
+
+    .. change:: new
+
+        Record style loss, content loss, total variation loss and the sum of all
+        losses to generate scalar curves within Tensorboard.
+
+.. changelog::
     :version: 0.2.0
     :released: 2019-05-27
 
