@@ -261,7 +261,7 @@ def stylish_train(**kwargs):
     stylish.filesystem.ensure_directory(output_path)
 
     # Training style generator.
-    model_path = stylish.train_model(
+    stylish.train_model(
         style_path, training_path, output_path, vgg_path,
         learning_rate=kwargs.get("learning_rate"),
         batch_size=kwargs.get("batch_size"),
@@ -270,8 +270,6 @@ def stylish_train(**kwargs):
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),
     )
-
-    logger.info("Model trained: {}".format(model_path))
 
 
 @main.command(
