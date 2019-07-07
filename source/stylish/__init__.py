@@ -113,6 +113,9 @@ def train_model(
     )
     logger.info("{} content image(s) found.".format(len(training_data)))
 
+    # Create summary writer
+    writer = tf.summary.FileWriter(output_log)
+
     # Pre-compute style features.
     with create_session() as session:
         style_feature = compute_style_feature(session, style_path, vgg_mapping)
@@ -153,7 +156,7 @@ def train_model(
         # Train the network on training data
         optimize(
             session, training_node, training_data, input_node, loss_mapping,
-            output_log, output_checkpoint, batch_size=batch_size,
+            output_checkpoint, writer, batch_size=batch_size,
             epoch_number=epoch_number
         )
 
@@ -458,8 +461,7 @@ def compute_loss(
 
 def optimize(
     session, training_node, training_data, input_node, loss_mapping,
-    output_log, output_checkpoint, batch_size=BATCH_SIZE,
-    epoch_number=EPOCHS_NUMBER
+    output_checkpoint, writer, batch_size=BATCH_SIZE, epoch_number=EPOCHS_NUMBER
 ):
     """Optimize the loss for *training_node*.
 
@@ -476,11 +478,13 @@ def optimize(
     *loss_mapping* should be a mapping of all loss nodes as returned by
     :func:`compute_loss`.
 
-    *output_log* should be the path to export the logs.
-
     *output_checkpoint* should be the path to export each checkpoints to
     resume the training at any time. A checkpoint will be saved after each
     epoch and at each 500 batches.
+
+    *writer* is a `FileWriter
+    <https://www.tensorflow.org/api_docs/python/tf/summary/FileWriter>`_
+    instance to record training data.
 
     *batch_size* should indicate the number of training examples utilized in one
     iteration. Default is :data:`BATCH_SIZE`.
@@ -501,13 +505,12 @@ def optimize(
     saver = tf.train.Saver()
 
     # Save log to visualize the graph with tensorboard.
-    train_writer = tf.summary.FileWriter(output_log, session.graph)
-    total_cost = tf.summary.scalar(name="total", tensor=loss_mapping["total"])
-    content = tf.summary.scalar(name="content", tensor=loss_mapping["content"])
-    style = tf.summary.scalar(name="style", tensor=loss_mapping["style"])
-    total_variation = tf.summary.scalar(
-        name="total_variation", tensor=loss_mapping["total_variation"]
-    )
+    writer.add_graph(session.graph)
+    tf.summary.scalar("total", tensor=loss_mapping["total"])
+    tf.summary.scalar("content", tensor=loss_mapping["content"])
+    tf.summary.scalar("style", tensor=loss_mapping["style"])
+    tf.summary.scalar("total_variation", tensor=loss_mapping["total_variation"])
+    merged_summary = tf.summary.merge_all()
 
     iteration = 0
     start_time = time.time()
@@ -528,15 +531,10 @@ def optimize(
             )
 
             # Execute the nodes within the session.
-            _, _total_cost, _content, _style, _total_variation = session.run(
-                [training_node, total_cost, content, style, total_variation],
-                feed_dict={input_node: x_batch}
+            _, summary = session.run(
+                [training_node, merged_summary], feed_dict={input_node: x_batch}
             )
-
-            train_writer.add_summary(_total_cost, iteration)
-            train_writer.add_summary(_content, iteration)
-            train_writer.add_summary(_style, iteration)
-            train_writer.add_summary(_total_variation, iteration)
+            writer.add_summary(summary, iteration)
             iteration += 1
 
             end_time_batch = time.time()

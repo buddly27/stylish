@@ -202,6 +202,7 @@ def conv2d_layer(
             dtype=tf.float32,
             name="weights"
         )
+        tf.summary.histogram("weights", weights_init)
 
         strides_shape = [1, strides, strides, 1]
         node = tf.nn.conv2d(
@@ -211,6 +212,7 @@ def conv2d_layer(
         node = instance_normalization(node, out_channels)
         if activation:
             node = tf.nn.relu(node)
+            tf.summary.histogram("activation", node)
 
     return node
 
@@ -244,6 +246,7 @@ def conv2d_transpose_layer(
             dtype=tf.float32,
             name="weights"
         )
+        tf.summary.histogram("weights", weights_init)
 
         shape = tf.shape(input_node)
 
@@ -260,6 +263,7 @@ def conv2d_transpose_layer(
         node = instance_normalization(node, in_channels)
         if activation is not None:
             node = tf.nn.relu(node)
+            tf.summary.histogram("activation", node)
 
     return node
 
