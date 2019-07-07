@@ -495,11 +495,11 @@ def optimize(
 
     # Save log to visualize the graph with tensorboard.
     train_writer = tf.summary.FileWriter(output_log, session.graph)
-    total_cost = tf.summary.scalar(name="Total", tensor=loss_mapping["total"])
-    content = tf.summary.scalar(name="Content", tensor=loss_mapping["content"])
-    style = tf.summary.scalar(name="Style", tensor=loss_mapping["style"])
+    total_cost = tf.summary.scalar(name="total", tensor=loss_mapping["total"])
+    content = tf.summary.scalar(name="content", tensor=loss_mapping["content"])
+    style = tf.summary.scalar(name="style", tensor=loss_mapping["style"])
     total_variation = tf.summary.scalar(
-        name="Total Variation", tensor=loss_mapping["total_variation"]
+        name="total_variation", tensor=loss_mapping["total_variation"]
     )
 
     iteration = 0
