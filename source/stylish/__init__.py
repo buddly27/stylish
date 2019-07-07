@@ -129,6 +129,7 @@ def train_model(
         with tf.name_scope("vgg1"):
             stylish.vgg.network(vgg_mapping, _input_node)
 
+        # Add dummy output node that can be targeted for model application
         output_node = tf.identity(
             stylish.transform.network(_input_node / 255.0),
             name="output"
