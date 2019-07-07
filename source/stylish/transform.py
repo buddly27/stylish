@@ -45,7 +45,7 @@ def network(input_node):
 
     """
     node = conv2d_layer(
-        input_node,
+        input_node, "conv1",
         in_channels=3,
         out_channels=32,
         kernel_size=9,
@@ -53,7 +53,7 @@ def network(input_node):
         activation=True
     )
     node = conv2d_layer(
-        node,
+        node, "conv2",
         in_channels=32,
         out_channels=64,
         kernel_size=3,
@@ -61,7 +61,7 @@ def network(input_node):
         activation=True
     )
     node = conv2d_layer(
-        node,
+        node, "conv3",
         in_channels=64,
         out_channels=128,
         kernel_size=3,
@@ -70,35 +70,35 @@ def network(input_node):
     )
 
     node = residual_block(
-        node,
+        node, "residual_block_1",
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
     node = residual_block(
-        node,
+        node, "residual_block_2",
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
     node = residual_block(
-        node,
+        node, "residual_block_3",
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
     node = residual_block(
-        node,
+        node, "residual_block_4",
         in_channels=128,
         out_channels=128,
         kernel_size=3,
         strides=1
     )
     node = residual_block(
-        node,
+        node, "residual_block_5",
         in_channels=128,
         out_channels=128,
         kernel_size=3,
@@ -106,7 +106,7 @@ def network(input_node):
     )
 
     node = conv2d_transpose_layer(
-        node,
+        node, "de_conv1",
         in_channels=64,
         out_channels=128,
         kernel_size=3,
@@ -114,7 +114,7 @@ def network(input_node):
         activation=True
     )
     node = conv2d_transpose_layer(
-        node,
+        node, "de_conv2",
         in_channels=32,
         out_channels=64,
         kernel_size=3,
@@ -122,19 +122,19 @@ def network(input_node):
         activation=True
     )
     node = conv2d_layer(
-        node,
+        node, "de_conv3",
         in_channels=32,
         out_channels=3,
         kernel_size=9,
         strides=1
     )
 
-    output = tf.add(tf.nn.tanh(node) * 150, 255.0/2, name="output")
+    output = tf.add(tf.nn.tanh(node) * 150, 255.0/2)
     return output
 
 
 def residual_block(
-    input_node, in_channels, out_channels, kernel_size, strides
+    input_node, operation_name, in_channels, out_channels, kernel_size, strides
 ):
     """Apply a residual block to the network.
 
@@ -151,28 +151,30 @@ def residual_block(
     dimension of *input_node*.
 
     """
-    node = conv2d_layer(
-        input_node,
-        in_channels=in_channels,
-        out_channels=out_channels,
-        kernel_size=kernel_size,
-        strides=strides
-    )
+    with tf.name_scope(operation_name):
+        node = conv2d_layer(
+            input_node, "rb{}_conv1".format(operation_name[-1]),
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            strides=strides
+        )
 
-    node = tf.nn.relu(node)
+        node = tf.nn.relu(node)
 
-    node = conv2d_layer(
-        node,
-        in_channels=in_channels,
-        out_channels=out_channels,
-        kernel_size=kernel_size,
-        strides=strides
-    )
+        node = conv2d_layer(
+            node, "rb{}_conv2".format(operation_name[-1]),
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            strides=strides
+        )
+
     return input_node + node
 
 
 def conv2d_layer(
-    input_node, in_channels, out_channels, kernel_size, strides,
+    input_node, operation_name, in_channels, out_channels, kernel_size, strides,
     activation=False
 ):
     """Apply a 2-D convolution layer to the network.
@@ -193,25 +195,28 @@ def conv2d_layer(
     the convolution layer.
 
     """
-    weights_shape = [kernel_size, kernel_size, in_channels, out_channels]
-    weights_init = tf.Variable(
-        tf.truncated_normal(weights_shape, stddev=0.1, seed=1), dtype=tf.float32
-    )
+    with tf.name_scope(operation_name):
+        weights_shape = [kernel_size, kernel_size, in_channels, out_channels]
+        weights_init = tf.Variable(
+            tf.truncated_normal(weights_shape, stddev=0.1, seed=1),
+            dtype=tf.float32,
+            name="weights"
+        )
 
-    strides_shape = [1, strides, strides, 1]
-    node = tf.nn.conv2d(
-        input_node, weights_init, strides_shape, padding="SAME"
-    )
+        strides_shape = [1, strides, strides, 1]
+        node = tf.nn.conv2d(
+            input_node, weights_init, strides_shape, padding="SAME"
+        )
 
-    node = instance_normalization(node, out_channels)
-    if activation:
-        node = tf.nn.relu(node)
+        node = instance_normalization(node, out_channels)
+        if activation:
+            node = tf.nn.relu(node)
 
     return node
 
 
 def conv2d_transpose_layer(
-    input_node, in_channels, out_channels, kernel_size, strides,
+    input_node, operation_name, in_channels, out_channels, kernel_size, strides,
     activation=None
 ):
     """Apply a transposed 2-D convolution layer to the network.
@@ -232,26 +237,29 @@ def conv2d_transpose_layer(
     the convolution layer.
 
     """
-    weights_shape = [kernel_size, kernel_size, in_channels, out_channels]
-    weights_init = tf.Variable(
-        tf.truncated_normal(weights_shape, stddev=0.1, seed=1), dtype=tf.float32
-    )
+    with tf.name_scope(operation_name):
+        weights_shape = [kernel_size, kernel_size, in_channels, out_channels]
+        weights_init = tf.Variable(
+            tf.truncated_normal(weights_shape, stddev=0.1, seed=1),
+            dtype=tf.float32,
+            name="weights"
+        )
 
-    shape = tf.shape(input_node)
+        shape = tf.shape(input_node)
 
-    strides_shape = [1, strides, strides, 1]
-    new_rows = tf.multiply(shape[1], strides)
-    new_columns = tf.multiply(shape[2], strides)
-    new_shape = [shape[0], new_rows, new_columns, in_channels]
-    tf_shape = tf.stack(new_shape)
+        strides_shape = [1, strides, strides, 1]
+        new_rows = tf.multiply(shape[1], strides)
+        new_columns = tf.multiply(shape[2], strides)
+        new_shape = [shape[0], new_rows, new_columns, in_channels]
+        tf_shape = tf.stack(new_shape)
 
-    node = tf.nn.conv2d_transpose(
-        input_node, weights_init, tf_shape, strides_shape, padding="SAME"
-    )
+        node = tf.nn.conv2d_transpose(
+            input_node, weights_init, tf_shape, strides_shape, padding="SAME"
+        )
 
-    node = instance_normalization(node, in_channels)
-    if activation is not None:
-        node = tf.nn.relu(node)
+        node = instance_normalization(node, in_channels)
+        if activation is not None:
+            node = tf.nn.relu(node)
 
     return node
 
@@ -268,9 +276,10 @@ def instance_normalization(input_node, channels):
         <https://arxiv.org/abs/1607.08022>`_.
 
     """
-    mu, sigma_sq = tf.nn.moments(input_node, [1, 2], keep_dims=True)
-    shift = tf.Variable(tf.zeros([channels]))
-    scale = tf.Variable(tf.ones([channels]))
-    epsilon = 1e-3
-    normalized = (input_node - mu) / (sigma_sq + epsilon) ** .5
-    return tf.add(tf.multiply(scale, normalized), shift)
+    with tf.name_scope("instance_normalization"):
+        mu, sigma_sq = tf.nn.moments(input_node, [1, 2], keep_dims=True)
+        shift = tf.Variable(tf.zeros([channels]), name="shift")
+        scale = tf.Variable(tf.ones([channels]), name="scale")
+        epsilon = 1e-3
+        normalized = (input_node - mu) / (sigma_sq + epsilon) ** .5
+        return tf.add(tf.multiply(scale, normalized), shift)

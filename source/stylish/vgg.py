@@ -38,15 +38,15 @@ VGG19_MEAN = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
 
 #: List of layers used to extract style features with corresponding weights.
 STYLE_LAYERS = [
-    ("conv1_1", 0.2),
-    ("conv2_1", 0.2),
-    ("conv3_1", 0.2),
-    ("conv4_1", 0.2),
-    ("conv5_1", 0.2)
+    ("conv1_1/Relu", 0.2),
+    ("conv2_1/Relu", 0.2),
+    ("conv3_1/Relu", 0.2),
+    ("conv4_1/Relu", 0.2),
+    ("conv5_1/Relu", 0.2)
 ]
 
 #: Layer used to extract the content features.
-CONTENT_LAYER = "conv4_2"
+CONTENT_LAYER = "conv4_2/Relu"
 
 
 def extract_mapping(path):
@@ -132,29 +132,29 @@ def network(vgg_mapping, input_node):
     """
     layer = conv2d_layer("conv1_1", vgg_mapping, input_node)
     layer = conv2d_layer("conv1_2", vgg_mapping, layer)
-    layer = pool_layer("pool1", layer)
+    layer = pool_layer("max_pool1", layer)
 
     layer = conv2d_layer("conv2_1", vgg_mapping, layer)
     layer = conv2d_layer("conv2_2", vgg_mapping, layer)
-    layer = pool_layer("pool2", layer)
+    layer = pool_layer("max_pool2", layer)
 
     layer = conv2d_layer("conv3_1", vgg_mapping, layer)
     layer = conv2d_layer("conv3_2", vgg_mapping, layer)
     layer = conv2d_layer("conv3_3", vgg_mapping, layer)
     layer = conv2d_layer("conv3_4", vgg_mapping, layer)
-    layer = pool_layer("pool3", layer)
+    layer = pool_layer("max_pool3", layer)
 
     layer = conv2d_layer("conv4_1", vgg_mapping, layer)
     layer = conv2d_layer("conv4_2", vgg_mapping, layer)
     layer = conv2d_layer("conv4_3", vgg_mapping, layer)
     layer = conv2d_layer("conv4_4", vgg_mapping, layer)
-    layer = pool_layer("pool4", layer)
+    layer = pool_layer("max_pool4", layer)
 
     layer = conv2d_layer("conv5_1", vgg_mapping, layer)
     layer = conv2d_layer("conv5_2", vgg_mapping, layer)
     layer = conv2d_layer("conv5_3", vgg_mapping, layer)
     layer = conv2d_layer("conv5_4", vgg_mapping, layer)
-    layer = pool_layer("pool5", layer)
+    layer = pool_layer("max_pool5", layer)
     return layer
 
 
@@ -185,15 +185,16 @@ def conv2d_layer(name, vgg_mapping, input_node):
     weight = vgg_mapping[name]["weight"]
     bias = vgg_mapping[name]["bias"]
 
-    layer = tf.nn.conv2d(
-        input_node,
-        filter=tf.constant(weight),
-        strides=[1, 1, 1, 1],
-        padding="SAME",
-    )
+    with tf.name_scope(name):
+        layer = tf.nn.conv2d(
+            input_node,
+            filter=tf.constant(weight),
+            strides=[1, 1, 1, 1],
+            padding="SAME",
+        )
 
-    layer = layer + tf.constant(np.reshape(bias, bias.size))
-    layer = tf.nn.relu(layer, name=name)
+        layer = layer + tf.constant(np.reshape(bias, bias.size))
+        layer = tf.nn.relu(layer, name="Relu")
 
     logger.debug(
         "Conv-2D layer '{}' added with ReLU activation [shape: {}]"

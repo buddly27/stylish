@@ -126,8 +126,13 @@ def train_model(
         _input_node = input_node - stylish.vgg.VGG19_MEAN
 
         # Build main network.
-        stylish.vgg.network(vgg_mapping, _input_node)
-        output_node = stylish.transform.network(_input_node/255.0)
+        with tf.name_scope("vgg1"):
+            stylish.vgg.network(vgg_mapping, _input_node)
+
+        output_node = tf.identity(
+            stylish.transform.network(_input_node / 255.0),
+            name="output"
+        )
 
         # Build loss network.
         loss_mapping = compute_loss(
@@ -289,12 +294,12 @@ def compute_style_feature(session, path, vgg_mapping):
     # Initiate the style features.
     style_feature = {}
 
-    with tf.name_scope("style_feature"):
-        input_node = tf.placeholder(
-            tf.float32, shape=image_shape, name="input"
-        )
-        _input_node = input_node - stylish.vgg.VGG19_MEAN
+    input_node = tf.placeholder(
+        tf.float32, shape=image_shape, name="input"
+    )
+    _input_node = input_node - stylish.vgg.VGG19_MEAN
 
+    with tf.name_scope("vgg"):
         stylish.vgg.network(vgg_mapping, _input_node)
 
     # Initiate input as a list of images.
@@ -305,7 +310,7 @@ def compute_style_feature(session, path, vgg_mapping):
 
         graph = tf.get_default_graph()
         layer_node = graph.get_tensor_by_name(
-            "style_feature/{}:0".format(layer_name)
+            "vgg/{}:0".format(layer_name)
         )
 
         # Run session on style layer.
@@ -373,20 +378,20 @@ def compute_loss(
 
     # Fetch content layer from main graph.
     content_layer = session.graph.get_tensor_by_name(
-        "{}:0".format(stylish.vgg.CONTENT_LAYER)
+        "vgg1/{}:0".format(stylish.vgg.CONTENT_LAYER)
     )
 
     # 1. Compute content loss.
     logger.info("Compute feature reconstruction loss ratio.")
 
-    with tf.name_scope("loss_network"):
+    with tf.name_scope("vgg2"):
         stylish.vgg.network(vgg_mapping, _output_node)
 
     with tf.name_scope("content_loss"):
         content_shape = tf.cast(tf.shape(content_layer), tf.float32)
         content_size = tf.reduce_prod(content_shape[1:]) * batch_size
         _content_layer = session.graph.get_tensor_by_name(
-            "loss_network/{}:0".format(stylish.vgg.CONTENT_LAYER)
+            "vgg2/{}:0".format(stylish.vgg.CONTENT_LAYER)
         )
 
         content_loss = content_weight * (
@@ -401,7 +406,7 @@ def compute_loss(
 
         for layer_name, _ in stylish.vgg.STYLE_LAYERS:
             layer = session.graph.get_tensor_by_name(
-                "loss_network/{}:0".format(layer_name)
+                "vgg2/{}:0".format(layer_name)
             )
 
             shape = tf.shape(layer)
