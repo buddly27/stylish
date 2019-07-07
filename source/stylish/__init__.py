@@ -3,6 +3,7 @@
 import os
 import time
 import contextlib
+import datetime
 
 import tensorflow as tf
 import numpy as np
@@ -501,7 +502,8 @@ def optimize(
         name="Total Variation", tensor=loss_mapping["total_variation"]
     )
 
-    step = 0
+    iteration = 0
+    start_time = time.time()
 
     train_size = len(training_data)
 
@@ -524,17 +526,22 @@ def optimize(
                 feed_dict={input_node: x_batch}
             )
 
-            train_writer.add_summary(_total_cost, step)
-            train_writer.add_summary(_content, step)
-            train_writer.add_summary(_style, step)
-            train_writer.add_summary(_total_variation, step)
-            step += 1
+            train_writer.add_summary(_total_cost, iteration)
+            train_writer.add_summary(_content, iteration)
+            train_writer.add_summary(_style, iteration)
+            train_writer.add_summary(_total_variation, iteration)
+            iteration += 1
 
             end_time_batch = time.time()
+            batch_duration = end_time_batch - start_time_batch
 
             message = (
-                "Batch #{} processed [time: {}]"
-                .format(index, end_time_batch - start_time_batch)
+                "Batch #{} processed [time: {} - total: {}]"
+                .format(
+                    index,
+                    datetime.timedelta(seconds=batch_duration),
+                    datetime.timedelta(seconds=end_time_batch - start_time)
+                )
             )
 
             if index % 500 == 0:
@@ -545,9 +552,14 @@ def optimize(
                 logger.debug(message)
 
         end_time_epoch = time.time()
+        epoch_duration = end_time_epoch - start_time_epoch
         logger.info(
-            "Epoch #{} processed [time: {}]"
-            .format(epoch, end_time_epoch - start_time_epoch)
+            "Epoch #{} processed [time: {} - total: {}]"
+            .format(
+                epoch,
+                datetime.timedelta(seconds=epoch_duration),
+                datetime.timedelta(seconds=end_time_epoch - start_time)
+            )
         )
 
         # Save checkpoint.
