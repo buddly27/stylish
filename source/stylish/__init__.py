@@ -224,8 +224,9 @@ def apply_model(model_path, input_path, output_path):
 
         end_time = time.time()
         logger.info(
-            "Image transformed: {} [time={}]".format(
-                output_image, end_time - start_time
+            "Image transformed: {} [time: {}]".format(
+                output_image,
+                datetime.timedelta(seconds=end_time - start_time)
             )
         )
 
