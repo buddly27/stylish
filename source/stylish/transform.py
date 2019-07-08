@@ -170,7 +170,7 @@ def residual_block(
             strides=strides
         )
 
-    return input_node + node
+        return input_node + node
 
 
 def conv2d_layer(
@@ -214,7 +214,7 @@ def conv2d_layer(
             node = tf.nn.relu(node)
             tf.summary.histogram("activation", node)
 
-    return node
+        return node
 
 
 def conv2d_transpose_layer(
@@ -265,7 +265,7 @@ def conv2d_transpose_layer(
             node = tf.nn.relu(node)
             tf.summary.histogram("activation", node)
 
-    return node
+        return node
 
 
 def instance_normalization(input_node, channels):
