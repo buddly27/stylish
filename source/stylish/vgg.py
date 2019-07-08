@@ -36,13 +36,13 @@ import stylish.logging
 # Mean pixels value from pre-trained Vgg19 model.
 VGG19_MEAN = np.array([123.68, 116.779, 103.939]).reshape((1, 1, 1, 3))
 
-#: List of layers used to extract style features with corresponding weights.
+#: List of layers used to extract style features.
 STYLE_LAYERS = [
-    ("conv1_1/Relu", 0.2),
-    ("conv2_1/Relu", 0.2),
-    ("conv3_1/Relu", 0.2),
-    ("conv4_1/Relu", 0.2),
-    ("conv5_1/Relu", 0.2)
+    "conv1_1/Relu",
+    "conv2_1/Relu",
+    "conv3_1/Relu",
+    "conv4_1/Relu",
+    "conv5_1/Relu"
 ]
 
 #: Layer used to extract the content features.

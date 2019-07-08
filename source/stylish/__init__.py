@@ -310,7 +310,7 @@ def compute_style_feature(session, path, vgg_mapping):
     # Initiate input as a list of images.
     images = np.array([image_matrix])
 
-    for layer_name, weight in stylish.vgg.STYLE_LAYERS:
+    for layer_name in stylish.vgg.STYLE_LAYERS:
         logger.debug("Processing style layer '{}'".format(layer_name))
 
         graph = tf.get_default_graph()
@@ -324,7 +324,7 @@ def compute_style_feature(session, path, vgg_mapping):
 
         features = np.reshape(features, (-1, features.shape[3]))
         gram = np.matmul(features.T, features) / features.size
-        style_feature[layer_name] = gram * weight
+        style_feature[layer_name] = gram
 
     return style_feature
 
@@ -409,7 +409,7 @@ def compute_loss(
     with tf.name_scope("style_loss"):
         style_losses = []
 
-        for layer_name, _ in stylish.vgg.STYLE_LAYERS:
+        for layer_name in stylish.vgg.STYLE_LAYERS:
             layer = session.graph.get_tensor_by_name(
                 "vgg2/{}:0".format(layer_name)
             )
