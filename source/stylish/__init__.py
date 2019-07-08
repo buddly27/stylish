@@ -4,6 +4,7 @@ import os
 import time
 import contextlib
 import datetime
+import itertools
 
 import tensorflow as tf
 import numpy as np
@@ -33,12 +34,16 @@ TV_WEIGHT = 200.0
 #: Default :term:`Learning Rate`.
 LEARNING_RATE = 1e-3
 
+#: Default weights for each layer used for style features extraction.
+LAYER_WEIGHTS = (1.0, 1.0, 1.0, 1.0, 1.0)
+
 
 def train_model(
     style_path, training_path, output_path, vgg_path,
     learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
     epoch_number=EPOCHS_NUMBER, content_weight=CONTENT_WEIGHT,
-    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, limit_training=None
+    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, layer_weights=LAYER_WEIGHTS,
+    limit_training=None
 ):
     """Train a style generator model for *style_path* on *training_path*.
 
@@ -83,6 +88,9 @@ def train_model(
     *tv_weight* should indicate the weight of the total variation term for the
     loss computation. Default is :data:`TV_WEIGHT`.
 
+    *layer_weights* should indicate a list of 5 values for each layer used for
+    style features extraction. Default is :data:`LAYER_WEIGHTS`.
+
     *limit_training* should be the maximum number of files to use from the
     training dataset folder. By default, all files from the training dataset
     folder are used.
@@ -118,7 +126,9 @@ def train_model(
 
     # Pre-compute style features.
     with create_session() as session:
-        style_feature = compute_style_feature(session, style_path, vgg_mapping)
+        style_feature = compute_style_feature(
+            session, style_path, vgg_mapping, layer_weights=layer_weights
+        )
 
     with create_session() as session:
         input_node = tf.placeholder(
@@ -260,7 +270,9 @@ def create_session():
         session.close()
 
 
-def compute_style_feature(session, path, vgg_mapping):
+def compute_style_feature(
+    session, path, vgg_mapping, layer_weights=LAYER_WEIGHTS
+):
     """Return computed style features mapping from image *path*.
 
     The style feature map will be used to penalize the predicted image when it
@@ -286,6 +298,9 @@ def compute_style_feature(session, path, vgg_mapping):
     *vgg_mapping* should gather all weight and bias matrices extracted from a
     pre-trained :term:`Vgg19` model (e.g. :func:`extract_mapping`).
 
+    *layer_weights* should indicate a list of 5 values for each layer used for
+    style features extraction. Default is :data:`LAYER_WEIGHTS`.
+
     """
     logger = stylish.logging.Logger(__name__ + ".compute_style_feature")
     logger.info("Extract style feature mapping from path: {}".format(path))
@@ -310,8 +325,15 @@ def compute_style_feature(session, path, vgg_mapping):
     # Initiate input as a list of images.
     images = np.array([image_matrix])
 
-    for layer_name in stylish.vgg.STYLE_LAYERS:
-        logger.debug("Processing style layer '{}'".format(layer_name))
+    for layer_name, weight in itertools.zip_longest(
+        stylish.vgg.STYLE_LAYERS, layer_weights
+    ):
+        weight = weight or 1.0
+        logger.info(
+            "Extracting features from layer '{}' [weight: {}]".format(
+                layer_name, weight
+            )
+        )
 
         graph = tf.get_default_graph()
         layer_node = graph.get_tensor_by_name(
@@ -324,7 +346,7 @@ def compute_style_feature(session, path, vgg_mapping):
 
         features = np.reshape(features, (-1, features.shape[3]))
         gram = np.matmul(features.T, features) / features.size
-        style_feature[layer_name] = gram
+        style_feature[layer_name] = gram * weight
 
     return style_feature
 

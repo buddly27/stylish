@@ -215,24 +215,32 @@ def stylish_download_coco2014(**kwargs):
     show_default=True
 )
 @click.option(
-    "-cw", "--content-weight",
+    "-C", "--content-weight",
     help="Weight of content in loss function.",
     type=float,
     default=stylish.CONTENT_WEIGHT,
     show_default=True
 )
 @click.option(
-    "-sw", "--style-weight",
+    "-S", "--style-weight",
     help="Weight of style in loss function.",
     type=float,
     default=stylish.STYLE_WEIGHT,
     show_default=True
 )
 @click.option(
-    "-tw", "--tv-weight",
+    "-T", "--tv-weight",
     help="Weight of total variation term in loss function.",
     type=float,
     default=stylish.TV_WEIGHT,
+    show_default=True
+)
+@click.option(
+    "-L", "--layer-weights",
+    help="Weights of layers used for style features extraction.",
+    nargs=5,
+    type=click.Tuple([float, float, float, float, float]),
+    default=(1.0, 1.0, 1.0, 1.0, 1.0),
     show_default=True
 )
 @click.option(
@@ -274,6 +282,7 @@ def stylish_train(**kwargs):
         content_weight=kwargs.get("content_weight"),
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),
+        layer_weights=kwargs.get("layer_weights"),
         limit_training=kwargs.get("limit")
     )
 
