@@ -17,11 +17,11 @@ Release Notes
 
     .. change:: changed
 
-        Updated :mod:`stylish.train`, :mod:`stylish.transform` and
-        :mod:`stylish.vgg` to uses name scopes as much as possible in order to
-        improve the graph visibility within :term:`Tensorboard`.
-
-        .. seealso:: https://www.tensorflow.org/api_docs/python/tf/name_scope
+        Updated :mod:`stylish`, :mod:`stylish.transform` and :mod:`stylish.vgg`
+        to uses `name scopes
+        <https://www.tensorflow.org/api_docs/python/tf/name_scope>`_ as much as
+        possible in order to improve the graph visibility within
+        :term:`Tensorboard`.
 
     .. change:: changed
 
