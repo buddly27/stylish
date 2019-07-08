@@ -5,6 +5,29 @@ Release Notes
 *************
 
 .. changelog::
+    :version: 0.4.0
+    :released: 2019-07-07
+
+    .. change:: new
+
+        Added ``stylish train --layer-weights`` option to initialize weights for
+        each layer from :data:`~stylish.vgg.STYLE_LAYERS`. The default value was
+        initially hard-coded to 0.2, but has now be changed to 1.0 as it
+        produces better results.
+
+    .. change:: changed
+
+        Updated :mod:`stylish.train`, :mod:`stylish.transform` and
+        :mod:`stylish.vgg` to uses name scopes as much as possible in order to
+        improve the graph visibility within :term:`Tensorboard`.
+
+        .. seealso:: https://www.tensorflow.org/api_docs/python/tf/name_scope
+
+    .. change:: changed
+
+        Improved time display during training.
+
+.. changelog::
     :version: 0.3.0
     :released: 2019-07-05
 

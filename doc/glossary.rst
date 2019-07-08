@@ -69,6 +69,12 @@ Glossary
 
         .. seealso:: https://www.tensorflow.org/
 
+    Tensorboard
+        TensorBoard provides the visualization and tooling needed for machine
+        learning experimentation with :term:`TensorFlow`
+
+        .. seealso:: https://www.tensorflow.org/tensorboard
+
     Vgg19
         VGG-19 is a :term:`Convolutional Neural Network` that is trained on more
          than a million images from the ImageNet database.
