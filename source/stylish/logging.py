@@ -3,7 +3,6 @@
 import os
 import sys
 import time
-import getpass
 import datetime
 import tempfile
 
