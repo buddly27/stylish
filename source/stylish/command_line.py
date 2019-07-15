@@ -267,7 +267,7 @@ def stylish_train(**kwargs):
 
     # Training style generator.
     stylish.create_model(
-        style_path, training_path, output_path, vgg_path,
+        training_path, style_path, output_path, vgg_path,
         learning_rate=kwargs.get("learning_rate"),
         batch_size=kwargs.get("batch_size"),
         epoch_number=kwargs.get("epochs"),

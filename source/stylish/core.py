@@ -74,8 +74,8 @@ def extract_style_from_path(path, vgg_mapping, style_layers):
         :func:`stylish.vgg.extract_mapping`).
 
     :param style_layers: Layer names from pre-trained :term:`Vgg19` model
-        used to extract the style information with corresponding weights. Default is
-        :data:`stylish.vgg.STYLE_LAYERS`.
+        used to extract the style information with corresponding weights.
+        Default is :data:`stylish.vgg.STYLE_LAYERS`.
 
     list of 5 values for each layer used for
     style features extraction. Default is :data:`LAYER_WEIGHTS`.
@@ -135,7 +135,7 @@ def extract_style_from_path(path, vgg_mapping, style_layers):
 
 
 def train_model(
-    training_images, vgg_mapping, style_mapping, model_path, log_path,
+    training_images, style_mapping, vgg_mapping, model_path, log_path,
     learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, batch_shape=BATCH_SHAPE,
     epoch_number=EPOCHS_NUMBER, content_weight=CONTENT_WEIGHT,
     style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, content_layer=None,
@@ -152,13 +152,13 @@ def train_model(
 
     :param training_images: list of images to train the model with.
 
-    :param vgg_mapping: mapping gathering all weight and bias matrices extracted
-        from a pre-trained :term:`Vgg19` model (typically retrieved by
-        :func:`stylish.vgg.extract_mapping`).
-
     :param style_mapping: mapping of pre-computed style features extracted from
         selected layers from a pre-trained :term:`Vgg19` model (typically
         retrieved by :func:`extract_style_from_path`)
+
+    :param vgg_mapping: mapping gathering all weight and bias matrices extracted
+        from a pre-trained :term:`Vgg19` model (typically retrieved by
+        :func:`stylish.vgg.extract_mapping`).
 
     :param model_path: path to save the trained model into.
 

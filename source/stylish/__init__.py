@@ -10,7 +10,7 @@ from stylish._version import __version__
 
 
 def create_model(
-    style_path, training_path, output_path, vgg_path, learning_rate=None,
+    training_path, style_path, output_path, vgg_path, learning_rate=None,
     batch_size=None, batch_shape=None, epoch_number=None, content_weight=None,
     style_weight=None, tv_weight=None, content_layer=None, style_layers=None,
     limit_training=None
@@ -20,16 +20,16 @@ def create_model(
     Usage example::
 
         >>> create_model(
-        ...    "/path/to/style_image.jpg",
         ...    "/path/to/training_data/",
+        ...    "/path/to/style_image.jpg",
         ...    "/path/to/output_model/",
         ...    "/path/to/vgg_model.mat"
         ... )
 
+    :param training_path: training dataset folder.
+
     :param style_path: path to an image from which the style features
         will be extracted.
-
-    :param training_path: training dataset folder.
 
     :param output_path: path where the trained model and logs should be saved
 
@@ -99,7 +99,7 @@ def create_model(
     )
 
     stylish.core.train_model(
-        training_images, vgg_mapping, style_mapping, model_path, log_path,
+        training_images, style_mapping, vgg_mapping, model_path, log_path,
         learning_rate=learning_rate or stylish.core.LEARNING_RATE,
         batch_size=batch_size or stylish.core.BATCH_SIZE,
         batch_shape=batch_shape or stylish.core.BATCH_SHAPE,
