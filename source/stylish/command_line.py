@@ -9,15 +9,15 @@ import click
 import requests
 
 import stylish
+import stylish.core
 import stylish.logging
-import stylish.vgg
 import stylish.filesystem
 from stylish import __version__
 
 
 #: Click default context for all commands.
 CONTEXT_SETTINGS = dict(
-    max_content_width=90,
+    max_content_width=100,
     help_option_names=["-h", "--help"],
 )
 
@@ -197,50 +197,42 @@ def stylish_download_coco2014(**kwargs):
     "-l", "--learning-rate",
     help="Learning rate for optimizer.",
     type=float,
-    default=stylish.LEARNING_RATE,
+    default=stylish.core.LEARNING_RATE,
     show_default=True
 )
 @click.option(
     "-b", "--batch-size",
     help="Batch size for training.",
     type=int,
-    default=stylish.BATCH_SIZE,
+    default=stylish.core.BATCH_SIZE,
     show_default=True
 )
 @click.option(
     "-e", "--epochs",
     help="Epochs to train for.",
     type=int,
-    default=stylish.EPOCHS_NUMBER,
+    default=stylish.core.EPOCHS_NUMBER,
     show_default=True
 )
 @click.option(
     "-C", "--content-weight",
     help="Weight of content in loss function.",
     type=float,
-    default=stylish.CONTENT_WEIGHT,
+    default=stylish.core.CONTENT_WEIGHT,
     show_default=True
 )
 @click.option(
     "-S", "--style-weight",
     help="Weight of style in loss function.",
     type=float,
-    default=stylish.STYLE_WEIGHT,
+    default=stylish.core.STYLE_WEIGHT,
     show_default=True
 )
 @click.option(
     "-T", "--tv-weight",
     help="Weight of total variation term in loss function.",
     type=float,
-    default=stylish.TV_WEIGHT,
-    show_default=True
-)
-@click.option(
-    "-L", "--layer-weights",
-    help="Weights of layers used for style features extraction.",
-    nargs=5,
-    type=click.Tuple([float, float, float, float, float]),
-    default=(1.0, 1.0, 1.0, 1.0, 1.0),
+    default=stylish.core.TV_WEIGHT,
     show_default=True
 )
 @click.option(
@@ -274,7 +266,7 @@ def stylish_train(**kwargs):
     stylish.filesystem.ensure_directory(output_path)
 
     # Training style generator.
-    stylish.train_model(
+    stylish.create_model(
         style_path, training_path, output_path, vgg_path,
         learning_rate=kwargs.get("learning_rate"),
         batch_size=kwargs.get("batch_size"),
@@ -282,7 +274,6 @@ def stylish_train(**kwargs):
         content_weight=kwargs.get("content_weight"),
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),
-        layer_weights=kwargs.get("layer_weights"),
         limit_training=kwargs.get("limit")
     )
 
