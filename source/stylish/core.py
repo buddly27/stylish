@@ -650,8 +650,8 @@ def save_model(session, input_node, output_node, path):
     :return: None
 
     """
-    input_info = tf.saved_model.utils.build_tensor_info(input_node)
-    output_info = tf.saved_model.utils.build_tensor_info(output_node)
+    input_info = tf.compat.v1.saved_model.build_tensor_info(input_node)
+    output_info = tf.compat.v1.saved_model.build_tensor_info(output_node)
 
     signature = tf.saved_model.signature_def_utils.build_signature_def(
         inputs={"input": input_info},
@@ -686,7 +686,7 @@ def infer_model(model_path, input_path):
     with create_session() as session:
         graph = tf.get_default_graph()
 
-        tf.saved_model.loader.load(session, ["serve"], model_path)
+        tf.compat.v1.saved_model.load(session, ["serve"], model_path)
         input_node = graph.get_tensor_by_name("input:0")
         output_node = graph.get_tensor_by_name("output:0")
 
