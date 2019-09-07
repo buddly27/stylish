@@ -316,7 +316,7 @@ def stylish_apply(**kwargs):
     output_path = kwargs.get("output") or tempfile.gettempdir()
 
     # Ensure that the output path exist and is accessible.
-    stylish.filesystem.ensure_directory(kwargs["output"])
+    stylish.filesystem.ensure_directory(output_path)
 
     path = stylish.apply_model(model_path, input_path, output_path)
 

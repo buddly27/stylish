@@ -1,6 +1,5 @@
 # :coding: utf-8
 
-import os
 import time
 import contextlib
 import datetime
@@ -61,7 +60,7 @@ def create_session():
         session.close()
 
 
-def extract_style_from_path(path, vgg_mapping, style_layers):
+def extract_style_from_path(path, vgg_mapping, style_layers, image_size=None):
     """Extract style feature mapping from image *path*.
 
     This mapping will be used to train a model which should learn to apply those
@@ -76,6 +75,8 @@ def extract_style_from_path(path, vgg_mapping, style_layers):
     :param style_layers: Layer names from pre-trained :term:`Vgg19` model
         used to extract the style information with corresponding weights.
         Default is :data:`stylish.vgg.STYLE_LAYERS`.
+
+    :param image_size: optional shape to resize the style image.
 
     list of 5 values for each layer used for
     style features extraction. Default is :data:`LAYER_WEIGHTS`.
@@ -94,8 +95,8 @@ def extract_style_from_path(path, vgg_mapping, style_layers):
     """
     logger = stylish.logging.Logger(__name__ + ".extract_style_from_path")
 
-    # Extract image matrix from image.
-    image = stylish.filesystem.load_image(path)
+    # Load image from path.
+    image = stylish.filesystem.load_image(path, image_size=image_size)
 
     # Initiate the shape of a 4-D Tensor for a list of images.
     image_shape = (1,) + image.shape
@@ -203,13 +204,15 @@ def train_model(
         )
 
         # Build main network.
-        output_node = stylish.transform.network(input_node / 255.0)
+        output_node = stylish.transform.network(
+            (input_node - stylish.vgg.VGG19_MEAN) / 255.0
+        )
 
         # Add dummy output node that can be targeted for model application
         output_node = tf.identity(output_node, name="output")
 
         # Train the network on training data
-        optimize(
+        optimize_from_dataset(
             session, training_images, input_node, output_node, vgg_mapping,
             style_mapping, log_path,
             learning_rate=learning_rate, batch_size=batch_size,
@@ -226,7 +229,7 @@ def train_model(
         save_model(session, input_node, output_node, model_path)
 
 
-def optimize(
+def optimize_from_dataset(
     session, training_images, input_node, output_node, vgg_mapping,
     style_mapping, log_path, learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
     batch_shape=BATCH_SHAPE, epoch_number=EPOCHS_NUMBER,
@@ -234,7 +237,7 @@ def optimize(
     tv_weight=TV_WEIGHT, content_layer=None, style_layers=None
 
 ):
-    """Optimize model weights using gradient descent to reduce the total cost.
+    """Optimize model weights on dataset using gradient descent to reduce cost.
 
     The gradient descent algorithm used is `Adam
     <https://arxiv.org/pdf/1412.6980.pdf>`_ and the total cost is computed by
@@ -293,10 +296,7 @@ def optimize(
     :return: None
 
     """
-    logger = stylish.logging.Logger(__name__ + ".optimize")
-
-    # Add graph to writer to visualize it with tensorboard.
-    writer = tf.summary.FileWriter(log_path, graph=session.graph)
+    logger = stylish.logging.Logger(__name__ + ".optimize_from_dataset")
 
     # Build loss networks.
     with tf.name_scope("vgg1"):
@@ -321,6 +321,9 @@ def optimize(
     # Apply optimizer to attempt to reduce the total cost.
     optimizer = tf.train.AdamOptimizer(learning_rate)
     training_node = optimizer.minimize(cost)
+
+    # Add graph to writer to visualize it with tensorboard.
+    writer = tf.summary.FileWriter(log_path, graph=session.graph)
 
     # Initiate all variables.
     session.run(tf.global_variables_initializer())
@@ -665,14 +668,12 @@ def save_model(session, input_node, output_node, path):
     builder.save()
 
 
-def infer_model(model_path, input_path, output_path):
+def infer_model(model_path, input_path):
     """Inferred trained model to convert input image.
 
     :param model_path: path to trained model saved.
 
     :param input_path: path to image to inferred model to.
-
-    :param output_path: path folder to save image output.
 
     :return: Path to output image generated.
 
@@ -681,11 +682,6 @@ def infer_model(model_path, input_path, output_path):
 
     # Extract image matrix from input image.
     image = stylish.filesystem.load_image(input_path)
-
-    # Compute output image path.
-    base_name, _ = os.path.splitext(input_path)
-    base_name = os.path.basename(base_name)
-    output_image = os.path.join(output_path, "{}.jpg".format(base_name))
 
     with create_session() as session:
         graph = tf.get_default_graph()
@@ -699,13 +695,12 @@ def infer_model(model_path, input_path, output_path):
         predictions = session.run(
             output_node, feed_dict={input_node: np.array([image])}
         )
-        stylish.filesystem.save_image(predictions[0], output_image)
 
         end_time = time.time()
         logger.info(
-            "Image transformed: {} [time: {}]".format(
-                output_image, datetime.timedelta(seconds=end_time - start_time)
+            "Inferred model [duration: {}]".format(
+                datetime.timedelta(seconds=end_time - start_time)
             )
         )
 
-        return output_image
+        return predictions[0]

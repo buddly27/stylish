@@ -137,4 +137,13 @@ def apply_model(model_path, input_path, output_path):
     logger = stylish.logging.Logger(__name__ + ".apply_model")
     logger.info("Apply style generator model.")
 
-    return stylish.core.infer_model(model_path, input_path, output_path)
+    # Compute output image path.
+    base_name, _ = os.path.splitext(input_path)
+    base_name = os.path.basename(base_name)
+    output_image = os.path.join(output_path, "{}.jpg".format(base_name))
+
+    # Infer model and save image.
+    image = stylish.core.infer_model(model_path, input_path)
+    stylish.filesystem.save_image(image, output_image)
+
+    return output_image
