@@ -4,6 +4,7 @@ import os
 import shutil
 import contextlib
 import tempfile
+import datetime
 
 import click
 import requests
@@ -163,6 +164,117 @@ def stylish_download_coco2014(**kwargs):
 
 
 @main.command(
+    name="transfer",
+    help="Transfer a style to an image.",
+    context_settings=CONTEXT_SETTINGS
+)
+@click.option(
+    "--vgg",
+    help="Path to Vgg19 pre-trained model in the MatConvNet data format.",
+    metavar="PATH",
+    type=click.Path(),
+    callback=_validate_train
+)
+@click.option(
+    "-i", "--input",
+    help="Path to image to transform.",
+    metavar="PATH",
+    type=click.Path(),
+    required=True
+)
+@click.option(
+    "-s", "--style",
+    help="Path to image from which the style features will be extracted.",
+    metavar="PATH",
+    type=click.Path(),
+    callback=_validate_train
+)
+@click.option(
+    "-l", "--learning-rate",
+    help="Learning rate for optimizer.",
+    type=float,
+    default=stylish.core.LEARNING_RATE,
+    show_default=True
+)
+@click.option(
+    "-I", "--iterations",
+    help="Iterations to train for.",
+    type=int,
+    default=stylish.core.ITERATIONS_NUMBER,
+    show_default=True
+)
+@click.option(
+    "-C", "--content-weight",
+    help="Weight of content in loss function.",
+    type=float,
+    default=stylish.core.CONTENT_WEIGHT,
+    show_default=True
+)
+@click.option(
+    "-S", "--style-weight",
+    help="Weight of style in loss function.",
+    type=float,
+    default=stylish.core.STYLE_WEIGHT,
+    show_default=True
+)
+@click.option(
+    "-T", "--tv-weight",
+    help="Weight of total variation term in loss function.",
+    type=float,
+    default=stylish.core.TV_WEIGHT,
+    show_default=True
+)
+@click.option(
+    "-o", "--output",
+    help="Path to folder in which the trained model will be saved.",
+    metavar="PATH",
+    type=click.Path(),
+)
+@click.option(
+    "--log-path",
+    help=(
+        "Path to extract the log information. Default is the same path as "
+        "the output path."
+    ),
+    metavar="PATH",
+    type=click.Path()
+)
+def stylish_transfer(**kwargs):
+    """Transfer style to an image."""
+    logger = stylish.logging.Logger(__name__ + ".stylish_transfer")
+
+    input_image = kwargs.get("input")
+    style_path = kwargs.get("style")
+    vgg_path = kwargs.get("vgg")
+
+    name = stylish.filesystem.sanitise_value(
+        os.path.basename(style_path.split(".", 1)[0]),
+        case_sensitive=False
+    )
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    log_directory = "{}-{}".format(name, timestamp)
+
+    output_path = kwargs.get("output") or tempfile.gettempdir()
+    log_path = kwargs.get("log_path") or output_path
+
+    output_path = os.path.join(output_path, "stylish")
+    log_path = os.path.join(log_path, "stylish", "log", log_directory)
+    stylish.filesystem.ensure_directory(log_path)
+
+    output_image = stylish.transform_image(
+        input_image, style_path, output_path, vgg_path,
+        iterations=kwargs.get("iterations"),
+        learning_rate=kwargs.get("learning_rate"),
+        content_weight=kwargs.get("content_weight"),
+        style_weight=kwargs.get("style_weight"),
+        tv_weight=kwargs.get("tv_weight"),
+        log_path=log_path
+    )
+
+    logger.info("Image generated: {}".format(output_image))
+
+
+@main.command(
     name="train",
     help="Train a style generator model.",
     context_settings=CONTEXT_SETTINGS
@@ -241,6 +353,15 @@ def stylish_download_coco2014(**kwargs):
     metavar="PATH",
     type=click.Path(),
 )
+@click.option(
+    "--log-path",
+    help=(
+        "Path to extract the log information. Default is the same path as "
+        "the output path."
+    ),
+    metavar="PATH",
+    type=click.Path()
+)
 def stylish_train(**kwargs):
     """Train a style generator model."""
     logger = stylish.logging.Logger(__name__ + ".stylish_train")
@@ -249,12 +370,19 @@ def stylish_train(**kwargs):
     training_path = kwargs.get("training")
     vgg_path = kwargs.get("vgg")
 
-    # Create output path.
-    path = kwargs.get("output") or tempfile.gettempdir()
-    name = os.path.basename(style_path.split(".", 1)[0])
-    output_path = os.path.join(
-        path, stylish.filesystem.sanitise_value(name, case_sensitive=False)
+    name = stylish.filesystem.sanitise_value(
+        os.path.basename(style_path.split(".", 1)[0]),
+        case_sensitive=False
     )
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    log_directory = "{}-{}".format(name, timestamp)
+
+    output_path = kwargs.get("output") or tempfile.gettempdir()
+    log_path = kwargs.get("log_path") or output_path
+
+    output_path = os.path.join(output_path, "stylish", "model", name)
+    log_path = os.path.join(log_path, "stylish", "log", log_directory)
+    stylish.filesystem.ensure_directory(log_path)
 
     if os.path.isdir(output_path):
         if not click.confirm("Output path already exists, overwrite?"):
@@ -263,9 +391,9 @@ def stylish_train(**kwargs):
 
         shutil.rmtree(output_path)
 
-    stylish.filesystem.ensure_directory(output_path)
+    # Do not create the final folder, otherwise the export will fail
+    stylish.filesystem.ensure_directory(os.path.dirname(output_path))
 
-    # Training style generator.
     stylish.create_model(
         training_path, style_path, output_path, vgg_path,
         learning_rate=kwargs.get("learning_rate"),
@@ -274,7 +402,8 @@ def stylish_train(**kwargs):
         content_weight=kwargs.get("content_weight"),
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),
-        limit_training=kwargs.get("limit")
+        limit_training=kwargs.get("limit"),
+        log_path=log_path
     )
 
 
@@ -315,11 +444,9 @@ def stylish_apply(**kwargs):
     input_path = kwargs.get("input")
     output_path = kwargs.get("output") or tempfile.gettempdir()
 
-    # Ensure that the output path exist and is accessible.
     stylish.filesystem.ensure_directory(output_path)
 
     path = stylish.apply_model(model_path, input_path, output_path)
-
     logger.info("Image generated: {}".format(path))
 
 
