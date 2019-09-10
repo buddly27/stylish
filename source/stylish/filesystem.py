@@ -68,7 +68,7 @@ def fetch_images(path, limit=None):
     :param path: path to the directory containing all images to fetch.
 
     :param limit: maximum number of files to fetch from *path*. By
-    default, all files are fetched.
+        default, all files are fetched.
 
     :return: list of image file path.
 
