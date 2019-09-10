@@ -3,7 +3,6 @@
 import os
 import shutil
 import contextlib
-import tempfile
 import datetime
 
 import click
@@ -139,7 +138,7 @@ def stylish_download_vgg19(**kwargs):
 @click.option(
     "-o", "--output",
     help=(
-        "Output path to save the element (Current directory is used by default)"
+        "Output path to save the element. Current directory is used by default."
     ),
     metavar="PATH",
     type=click.Path(),
@@ -226,7 +225,10 @@ def stylish_download_coco2014(**kwargs):
 )
 @click.option(
     "-o", "--output",
-    help="Path to folder in which the trained model will be saved.",
+    help=(
+        "Path to folder in which the transformed image will be saved. Current "
+        "directory is used by default."
+    ),
     metavar="PATH",
     type=click.Path(),
 )
@@ -254,7 +256,7 @@ def stylish_transfer(**kwargs):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     log_directory = "{}-{}".format(name, timestamp)
 
-    output_path = kwargs.get("output") or tempfile.gettempdir()
+    output_path = kwargs.get("output") or os.getcwd()
     log_path = kwargs.get("log_path") or output_path
 
     output_path = os.path.join(output_path, "stylish")
@@ -349,7 +351,10 @@ def stylish_transfer(**kwargs):
 )
 @click.option(
     "-o", "--output",
-    help="Path to folder in which the trained model will be saved.",
+    help=(
+        "Path to folder in which the trained model will be saved. Current "
+        "directory is used by default."
+    ),
     metavar="PATH",
     type=click.Path(),
 )
@@ -377,7 +382,7 @@ def stylish_train(**kwargs):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
     log_directory = "{}-{}".format(name, timestamp)
 
-    output_path = kwargs.get("output") or tempfile.gettempdir()
+    output_path = kwargs.get("output") or os.getcwd()
     log_path = kwargs.get("log_path") or output_path
 
     output_path = os.path.join(output_path, "stylish", "model", name)
@@ -431,7 +436,10 @@ def stylish_train(**kwargs):
 )
 @click.option(
     "-o", "--output",
-    help="Path to folder in which the transformed image will be saved.",
+    help=(
+        "Path to folder in which the transformed image will be saved. Current "
+        "directory is used by default."
+    ),
     metavar="PATH",
     type=click.Path(),
     required=True
@@ -442,7 +450,7 @@ def stylish_apply(**kwargs):
 
     model_path = kwargs.get("model")
     input_path = kwargs.get("input")
-    output_path = kwargs.get("output") or tempfile.gettempdir()
+    output_path = kwargs.get("output") or os.getcwd()
 
     stylish.filesystem.ensure_directory(output_path)
 
