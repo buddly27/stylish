@@ -216,9 +216,11 @@ def optimize_image(
 
         # Compute total cost.
         cost = compute_cost(
-            session, style_mapping, output_node, batch_size=1,
+            session, style_mapping, output_node,
+            batch_size=1,
             content_weight=content_weight,
-            style_weight=style_weight, tv_weight=tv_weight,
+            style_weight=style_weight,
+            tv_weight=tv_weight,
             content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
             style_layers=style_layers or [
                 name for name, _ in stylish.vgg.STYLE_LAYERS
@@ -364,9 +366,11 @@ def optimize_model(
 
         # Compute total cost.
         cost = compute_cost(
-            session, style_mapping, output_node, batch_size=batch_size,
+            session, style_mapping, output_node,
+            batch_size=batch_size,
             content_weight=content_weight,
-            style_weight=style_weight, tv_weight=tv_weight,
+            style_weight=style_weight,
+            tv_weight=tv_weight,
             content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
             style_layers=style_layers or [
                 name for name, _ in stylish.vgg.STYLE_LAYERS
