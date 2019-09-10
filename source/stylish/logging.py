@@ -37,6 +37,8 @@ def configure(stderr_level="info"):
     A file handler is created to log warnings and greater to
     :file:`stylish/logs` under system temporary directory.
 
+    :param stderr_level: minimum level to record.
+
     .. note::
 
         Standard Python logging are redirected to :mod:`sawmill` to unify

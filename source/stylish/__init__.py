@@ -36,7 +36,7 @@ def transform_image(
         :term:`MatConvNet` data format.
 
     :param iterations: number of time that image should be trained against
-        *style_path*. Default is :data:`stylish.core.ITERATIONS`.
+        *style_path*. Default is :data:`stylish.core.ITERATIONS_NUMBER`.
 
     :param learning_rate: :term:`Learning Rate` value to train the model.
         Default is :data:`stylish.core.LEARNING_RATE`.

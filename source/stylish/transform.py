@@ -40,8 +40,8 @@ def network(input_node):
         ...     ...
         ...     network(input_node)
 
-    *input_node* should be a 4-D Tensor representing a batch list of images.
-    It will be the input of the network.
+    :param input_node: 4-D Tensor representing a list of images.
+        It will be the input of the network.
 
     """
     node = conv2d_layer(
@@ -138,17 +138,19 @@ def residual_block(
 ):
     """Apply a residual block to the network.
 
-    *input_node* will be the input of the block.
+    :param input_node: Input tensor of the block
 
-    *in_channels* should be the number of channels at the input of the block.
+    :param operation_name: Name of the operation which will be set as a scope.
 
-    *out_channels* should be the number of channels at the output of the block.
+    :param in_channels: Number of channels at the input of the block.
 
-    *kernel_size* should be the width and height of the convolution matrix used
-    within the block.
+    :param out_channels: Number of channels at the output of the block.
 
-    *strides* should indicate the stride of the sliding window for each
-    dimension of *input_node*.
+    :param kernel_size: width and height of the convolution matrix used within
+        the block.
+
+    :param strides: stride of the sliding window for each dimension of
+        *input_node*.
 
     """
     with tf.name_scope(operation_name):
@@ -179,20 +181,22 @@ def conv2d_layer(
 ):
     """Apply a 2-D convolution layer to the network.
 
-    *input_node* will be the input of the layer.
+    :param input_node: Input tensor of the block
 
-    *in_channels* should be the number of channels at the input of the layer.
+    :param operation_name: Name of the operation which will be set as a scope.
 
-    *out_channels* should be the number of channels at the output of the layer.
+    :param in_channels: Number of channels at the input of the block.
 
-    *kernel_size* should be the width and height of the convolution matrix used
-    within the block.
+    :param out_channels: Number of channels at the output of the block.
 
-    *strides* should indicate the stride of the sliding window for each
-    dimension of *input_node*.
+    :param kernel_size: width and height of the convolution matrix used within
+        the block.
 
-    *activation* should indicate whether a 'relu' node should be added after
-    the convolution layer.
+    :param strides: stride of the sliding window for each dimension of
+        *input_node*.
+
+    :param activation: indicate whether a 'relu' node should be added after
+        the convolution layer. Default is False.
 
     """
     with tf.name_scope(operation_name):
@@ -219,24 +223,26 @@ def conv2d_layer(
 
 def conv2d_transpose_layer(
     input_node, operation_name, in_channels, out_channels, kernel_size, strides,
-    activation=None
+    activation=False
 ):
     """Apply a transposed 2-D convolution layer to the network.
 
-    *input_node* will be the input of the layer.
+    :param input_node: Input tensor of the block
 
-    *in_channels* should be the number of channels at the input of the layer.
+    :param operation_name: Name of the operation which will be set as a scope.
 
-    *out_channels* should be the number of channels at the output of the layer.
+    :param in_channels: Number of channels at the input of the block.
 
-    *kernel_size* should be the width and height of the convolution matrix used
-    within the block.
+    :param out_channels: Number of channels at the output of the block.
 
-    *strides* should indicate the stride of the sliding window for each
-    dimension of *input_node*.
+    :param kernel_size: width and height of the convolution matrix used within
+        the block.
 
-    *activation* should indicate whether a 'relu' node should be added after
-    the convolution layer.
+    :param strides: stride of the sliding window for each dimension of
+        *input_node*.
+
+    :param activation: indicate whether a 'relu' node should be added after
+        the convolution layer. Default is False.
 
     """
     with tf.name_scope(operation_name):
@@ -261,7 +267,7 @@ def conv2d_transpose_layer(
         )
 
         node = instance_normalization(node, in_channels)
-        if activation is not None:
+        if activation:
             node = tf.nn.relu(node)
             tf.summary.histogram("activation", node)
 
@@ -271,7 +277,9 @@ def conv2d_transpose_layer(
 def instance_normalization(input_node, channels):
     """Apply an instance normalization to the network.
 
-    *input_node* will be the input of the layer.
+    :param input_node: Input tensor of the block
+
+    :param channels: Number of channels at the input of the block.
 
     .. seealso::
 
