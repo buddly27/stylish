@@ -251,11 +251,10 @@ def stylish_transfer(**kwargs):
     input_image = kwargs.get("input")
     style_path = kwargs.get("style")
     vgg_path = kwargs.get("vgg")
-
     output_path = kwargs.get("output") or os.getcwd()
-    log_path = stylish.filesystem.create_log_path(
-        style_path, relative_path=output_path
-    )
+
+    # Ensure that output path exists.
+    stylish.filesystem.ensure_directory(output_path)
 
     output_image = stylish.transform_image(
         input_image, style_path, output_path, vgg_path,
@@ -264,7 +263,7 @@ def stylish_transfer(**kwargs):
         content_weight=kwargs.get("content_weight"),
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),
-        log_path=log_path
+        log_path=kwargs.get("log_path")
     )
 
     logger.info("Image generated: {}".format(output_image))
@@ -368,11 +367,7 @@ def stylish_train(**kwargs):
     style_path = kwargs.get("style")
     training_path = kwargs.get("training")
     vgg_path = kwargs.get("vgg")
-
     output_path = kwargs.get("output") or os.getcwd()
-    log_path = stylish.filesystem.create_log_path(
-        style_path, relative_path=output_path
-    )
 
     if os.path.isdir(output_path):
         if not click.confirm("Output path already exists, overwrite?"):
@@ -381,7 +376,8 @@ def stylish_train(**kwargs):
 
         shutil.rmtree(output_path)
 
-    # Do not create the final folder, otherwise the export will fail
+    # Ensure that output path exists. But do not create the final folder,
+    # otherwise the 'tf.saved_model.builder.SavedModelBuilder' class will fail.
     stylish.filesystem.ensure_directory(os.path.dirname(output_path))
 
     stylish.create_model(
@@ -393,7 +389,7 @@ def stylish_train(**kwargs):
         style_weight=kwargs.get("style_weight"),
         tv_weight=kwargs.get("tv_weight"),
         limit_training=kwargs.get("limit"),
-        log_path=log_path
+        log_path=kwargs.get("log_path")
     )
 
 
@@ -437,6 +433,7 @@ def stylish_apply(**kwargs):
     input_path = kwargs.get("input")
     output_path = kwargs.get("output") or os.getcwd()
 
+    # Ensure that output path exists.
     stylish.filesystem.ensure_directory(output_path)
 
     path = stylish.apply_model(model_path, input_path, output_path)
@@ -477,9 +474,12 @@ def stylish_extract(**kwargs):
 
     style_path = kwargs.get("style")
     vgg_path = kwargs.get("vgg")
+    output_path = os.path.join(
+        kwargs.get("output") or os.getcwd(), "stylish"
+    )
 
-    output_path = kwargs.get("output") or os.getcwd()
-    output_path = os.path.join(output_path, "stylish")
+    # Ensure that output path exists.
+    stylish.filesystem.ensure_directory(output_path)
 
     images = stylish.extract_style_pattern(style_path, output_path, vgg_path)
     logger.info(
