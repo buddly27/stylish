@@ -118,7 +118,9 @@ def stylish_download_vgg19(**kwargs):
     # Pre-trained model source.
     name = "imagenet-vgg-verydeep-19.mat"
     uri = "http://www.vlfeat.org/matconvnet/models/imagenet-vgg-verydeep-19.mat"
-    path = os.path.join(kwargs.get("output") or os.getcwd(), name)
+    path = os.path.abspath(
+        os.path.join(kwargs.get("output") or os.getcwd(), name)
+    )
 
     logger.info(
         "Download pre-trained Vgg19 model:\n"
@@ -150,7 +152,9 @@ def stylish_download_coco2014(**kwargs):
     # Pre-trained model source.
     name = "train2014.zip"
     uri = "http://images.cocodataset.org/zips/train2014.zip"
-    path = os.path.join(kwargs.get("output") or os.getcwd(), name)
+    path = os.path.abspath(
+        os.path.join(kwargs.get("output") or os.getcwd(), name)
+    )
 
     logger.info(
         "Download COCO 2014 Training dataset:\n"
@@ -456,6 +460,72 @@ def stylish_apply(**kwargs):
 
     path = stylish.apply_model(model_path, input_path, output_path)
     logger.info("Image generated: {}".format(path))
+
+
+@main.command(
+    name="extract",
+    help="Extract the style to an image.",
+    context_settings=CONTEXT_SETTINGS
+)
+@click.option(
+    "--vgg",
+    help="Path to Vgg19 pre-trained model in the MatConvNet data format.",
+    metavar="PATH",
+    type=click.Path(),
+    callback=_validate_train
+)
+@click.option(
+    "-s", "--style",
+    help="Path to image from which the style features will be extracted.",
+    metavar="PATH",
+    type=click.Path(),
+    callback=_validate_train
+)
+@click.option(
+    "-o", "--output",
+    help=(
+        "Path to folder in which the style pattern image will be saved. "
+        "Current directory is used by default."
+    ),
+    metavar="PATH",
+    type=click.Path(),
+)
+@click.option(
+    "--log-path",
+    help=(
+        "Path to extract the log information. Default is the same path as "
+        "the output path."
+    ),
+    metavar="PATH",
+    type=click.Path()
+)
+def stylish_extract(**kwargs):
+    """Extract the style to an image."""
+    logger = stylish.logging.Logger(__name__ + ".stylish_extract")
+
+    style_path = kwargs.get("style")
+    vgg_path = kwargs.get("vgg")
+
+    name = stylish.filesystem.sanitise_value(
+        os.path.basename(style_path.split(".", 1)[0]),
+        case_sensitive=False
+    )
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+    log_directory = "{}-{}".format(name, timestamp)
+
+    output_path = kwargs.get("output") or os.getcwd()
+    log_path = kwargs.get("log_path") or output_path
+
+    output_path = os.path.join(output_path, "stylish")
+    log_path = os.path.join(log_path, "stylish", "log", log_directory)
+    stylish.filesystem.ensure_directory(log_path)
+
+    images = stylish.extract_style_pattern(style_path, output_path, vgg_path)
+    logger.info(
+        "Images generated:\n{}".format(
+            "\n".join(["- {}".format(image) for image in images])
+        )
+    )
 
 
 def _download(logger, uri, path):

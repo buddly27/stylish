@@ -69,10 +69,6 @@ def transform_image(
         <https://imageio.readthedocs.io/en/stable/formats.html>`_
 
     """
-    logger = stylish.logging.Logger(__name__ + ".transform_image")
-    logger.info("Create new image with style from {}".format(style_path))
-    logger.info("Logs path: {}".format(log_path))
-
     # Compute output image path.
     base_name, extension = os.path.splitext(path)
     base_name = os.path.basename(base_name)
@@ -176,15 +172,11 @@ def create_model(
 
     """
     logger = stylish.logging.Logger(__name__ + ".create_model")
-    logger.info("Create model to apply style from {}".format(style_path))
-    logger.info("Model path: {}".format(output_path))
-    logger.info("Logs path: {}".format(log_path))
 
     # Extract weight and bias from pre-trained Vgg19 mapping.
     vgg_mapping = stylish.vgg.extract_mapping(vgg_path)
 
     # Extract targeted images for training.
-    logger.info("Extract content images from '{}'".format(training_path))
     training_images = stylish.filesystem.fetch_images(
         training_path, limit=limit_training
     )
@@ -238,9 +230,6 @@ def apply_model(model_path, input_path, output_path):
         <https://imageio.readthedocs.io/en/stable/formats.html>`_
 
     """
-    logger = stylish.logging.Logger(__name__ + ".apply_model")
-    logger.info("Apply model to image {}".format(input_path))
-
     # Compute output image path.
     base_name, extension = os.path.splitext(input_path)
     base_name = os.path.basename(base_name)
@@ -251,3 +240,49 @@ def apply_model(model_path, input_path, output_path):
     stylish.filesystem.save_image(image, output_image)
 
     return output_image
+
+
+def extract_style_pattern(path, output_path, vgg_path, style_layers=None):
+    """Generate style pattern images from image *path*.
+
+    :param path: path to the image to extract style pattern images from.
+
+    :param output_path: path where the images will be generated.
+
+    :param vgg_path: path to the :term:`Vgg19` pre-trained model in the
+        :term:`MatConvNet` data format.
+
+    :param style_layers: Layer names from pre-trained :term:`Vgg19` model
+        used to extract the style information with corresponding weights.
+        Default is :data:`stylish.vgg.STYLE_LAYERS`.
+
+    :return: list of image paths generated.
+
+    """
+    # Compute output image path.
+    base_name, extension = os.path.splitext(path)
+    base_name = os.path.basename(base_name)
+
+    # Extract weight and bias from pre-trained Vgg19 mapping.
+    vgg_mapping = stylish.vgg.extract_mapping(vgg_path)
+
+    # Load image from path.
+    image = stylish.filesystem.load_image(path)
+
+    # Pre-compute style features.
+    style_mapping = stylish.core.extract_style_from_path(
+        path, vgg_mapping, style_layers or stylish.vgg.STYLE_LAYERS,
+        image_size=image.shape
+    )
+
+    images = []
+
+    for layer_name, image in style_mapping.items():
+        layer_name = layer_name.replace("/", "_")
+        output_image = os.path.join(
+            output_path, "{}_{}{}".format(base_name, layer_name, extension)
+        )
+        stylish.filesystem.save_image(image, output_image)
+        images.append(output_image)
+
+    return images
