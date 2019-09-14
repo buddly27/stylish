@@ -4,12 +4,49 @@ import os
 import re
 import unicodedata
 import errno
+import tempfile
+import datetime
 
 import numpy as np
 import imageio
 import skimage.transform
 
 import stylish.logging
+
+
+def create_log_path(style_path, relative_path=None):
+    """Return :term:`Tensorflow` log path.
+
+    Example::
+
+        >>> create_log_path("/path/to/Foo.jpg")
+        "/tmp/stylish/log/foo-2019-09-14_15:12:11/"
+
+        >>> create_log_path("/path/to/Foo.jpg", relative_path="/path")
+        "/path/stylish/log/foo-2019-09-14_15:12:11/"
+
+    :param style_path: path to an image from which the style features
+        will be extracted.
+
+    :param relative_path: Path to a folder to generate logs into. The temporary
+        folder is used otherwise.
+
+    :return: Path to save :term:`Tensorflow` logs.
+
+    """
+    name = stylish.filesystem.sanitise_value(
+        os.path.basename(style_path.split(".", 1)[0]),
+        case_sensitive=False
+    )
+    name += "-{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+
+    root_path = relative_path or tempfile.gettempdir()
+    path = os.path.join(root_path, "stylish", "log", name)
+
+    # Attempt to create the path if necessary.
+    ensure_directory(path)
+
+    return path
 
 
 def load_image(path, image_size=None):

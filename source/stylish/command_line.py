@@ -3,7 +3,6 @@
 import os
 import shutil
 import contextlib
-import datetime
 
 import click
 import requests
@@ -253,19 +252,10 @@ def stylish_transfer(**kwargs):
     style_path = kwargs.get("style")
     vgg_path = kwargs.get("vgg")
 
-    name = stylish.filesystem.sanitise_value(
-        os.path.basename(style_path.split(".", 1)[0]),
-        case_sensitive=False
-    )
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_directory = "{}-{}".format(name, timestamp)
-
     output_path = kwargs.get("output") or os.getcwd()
-    log_path = kwargs.get("log_path") or output_path
-
-    output_path = os.path.join(output_path, "stylish")
-    log_path = os.path.join(log_path, "stylish", "log", log_directory)
-    stylish.filesystem.ensure_directory(log_path)
+    log_path = stylish.filesystem.create_log_path(
+        style_path, relative_path=output_path
+    )
 
     output_image = stylish.transform_image(
         input_image, style_path, output_path, vgg_path,
@@ -379,19 +369,10 @@ def stylish_train(**kwargs):
     training_path = kwargs.get("training")
     vgg_path = kwargs.get("vgg")
 
-    name = stylish.filesystem.sanitise_value(
-        os.path.basename(style_path.split(".", 1)[0]),
-        case_sensitive=False
-    )
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_directory = "{}-{}".format(name, timestamp)
-
     output_path = kwargs.get("output") or os.getcwd()
-    log_path = kwargs.get("log_path") or output_path
-
-    output_path = os.path.join(output_path, "stylish", "model", name)
-    log_path = os.path.join(log_path, "stylish", "log", log_directory)
-    stylish.filesystem.ensure_directory(log_path)
+    log_path = stylish.filesystem.create_log_path(
+        style_path, relative_path=output_path
+    )
 
     if os.path.isdir(output_path):
         if not click.confirm("Output path already exists, overwrite?"):
@@ -490,15 +471,6 @@ def stylish_apply(**kwargs):
     metavar="PATH",
     type=click.Path(),
 )
-@click.option(
-    "--log-path",
-    help=(
-        "Path to extract the log information. Default is the same path as "
-        "the output path."
-    ),
-    metavar="PATH",
-    type=click.Path()
-)
 def stylish_extract(**kwargs):
     """Extract the style to an image."""
     logger = stylish.logging.Logger(__name__ + ".stylish_extract")
@@ -506,19 +478,8 @@ def stylish_extract(**kwargs):
     style_path = kwargs.get("style")
     vgg_path = kwargs.get("vgg")
 
-    name = stylish.filesystem.sanitise_value(
-        os.path.basename(style_path.split(".", 1)[0]),
-        case_sensitive=False
-    )
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    log_directory = "{}-{}".format(name, timestamp)
-
     output_path = kwargs.get("output") or os.getcwd()
-    log_path = kwargs.get("log_path") or output_path
-
     output_path = os.path.join(output_path, "stylish")
-    log_path = os.path.join(log_path, "stylish", "log", log_directory)
-    stylish.filesystem.ensure_directory(log_path)
 
     images = stylish.extract_style_pattern(style_path, output_path, vgg_path)
     logger.info(
