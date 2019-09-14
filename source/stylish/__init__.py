@@ -59,7 +59,7 @@ def transform_image(
         Default is :data:`stylish.vgg.STYLE_LAYERS`.
 
     :param log_path: path to extract the log information. Default is the
-        temporary directory.
+        same path as the output path.
 
     :return: path to transformed image.
 
@@ -86,10 +86,19 @@ def transform_image(
         image_size=image.shape
     )
 
+    # Define log default if necessary.
+    if log_path is None:
+        log_path = stylish.filesystem.create_log_path(
+            style_path, relative_path=output_path
+        )
+
     transformed_image = stylish.core.optimize_image(
-        image, style_mapping, vgg_mapping, log_path, iterations,
-        learning_rate=learning_rate, content_weight=content_weight,
-        style_weight=style_weight, tv_weight=tv_weight,
+        image, style_mapping, vgg_mapping, log_path,
+        iterations or stylish.core.ITERATIONS_NUMBER,
+        learning_rate=learning_rate or stylish.core.LEARNING_RATE,
+        content_weight=content_weight or stylish.core.CONTENT_WEIGHT,
+        style_weight=style_weight or stylish.core.STYLE_WEIGHT,
+        tv_weight=tv_weight or stylish.core.TV_WEIGHT,
         content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
         style_layers=style_layers or [
             name for name, _ in stylish.vgg.STYLE_LAYERS
@@ -161,7 +170,7 @@ def create_model(
         are used.
 
     :param log_path: path to extract the log information. Default is the
-        temporary directory.
+        same path as the output path.
 
     :return: None
 
@@ -186,6 +195,12 @@ def create_model(
     style_mapping = stylish.core.extract_style_from_path(
         style_path, vgg_mapping, style_layers or stylish.vgg.STYLE_LAYERS
     )
+
+    # Define log default if necessary.
+    if log_path is None:
+        log_path = stylish.filesystem.create_log_path(
+            style_path, relative_path=output_path
+        )
 
     stylish.core.optimize_model(
         training_images, style_mapping, vgg_mapping, output_path, log_path,
