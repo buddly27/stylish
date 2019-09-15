@@ -137,14 +137,14 @@ def mocked_core_infer_model(mocker):
             stylish.vgg.STYLE_LAYERS
         ),
         (
-            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_1__", 2)]},
+            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_2__", 2)]},
             stylish.core.ITERATIONS_NUMBER,
             stylish.core.LEARNING_RATE,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            [("__LAYER_1__", 1), ("__LAYER_1__", 2)]
+            [("__LAYER_1__", 1), ("__LAYER_2__", 2)]
         )
     ],
     ids=[
@@ -378,7 +378,7 @@ def test_transform_image_with_log(
             None
         ),
         (
-            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_1__", 2)]},
+            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_2__", 2)]},
             stylish.core.LEARNING_RATE,
             stylish.core.BATCH_SIZE,
             stylish.core.BATCH_SHAPE,
@@ -387,7 +387,7 @@ def test_transform_image_with_log(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            [("__LAYER_1__", 1), ("__LAYER_1__", 2)],
+            [("__LAYER_1__", 1), ("__LAYER_2__", 2)],
             None
         ),
         (
@@ -540,8 +540,8 @@ def test_apply_model(mocked_filesystem_save_image, mocked_core_infer_model):
             stylish.vgg.STYLE_LAYERS
         ),
         (
-            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_1__", 2)]},
-            [("__LAYER_1__", 1), ("__LAYER_1__", 2)]
+            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_2__", 2)]},
+            [("__LAYER_1__", 1), ("__LAYER_2__", 2)]
         )
     ],
     ids=[
