@@ -117,6 +117,9 @@ def extract_style_from_path(path, vgg_mapping, style_layers, image_size=None):
         # Initiate input as a list of images.
         images = np.array([image])
 
+        # Get default graph augmented with VGG network.
+        graph = tf.get_default_graph()
+
         for layer_name, weight in style_layers:
             logger.info(
                 "Extracting features from layer '{}' [weight: {}]".format(
@@ -124,7 +127,6 @@ def extract_style_from_path(path, vgg_mapping, style_layers, image_size=None):
                 )
             )
 
-            graph = tf.get_default_graph()
             layer = graph.get_tensor_by_name("vgg/{}:0".format(layer_name))
 
             # Run session on style layer.
