@@ -262,7 +262,7 @@ def optimize_image(
             end_time_iteration = time.time()
             duration = end_time_iteration - start_time_iteration
 
-            message = (
+            logger.info(
                 "Iteration {}/{} processed [duration: {} - total: {}]"
                 .format(
                     iteration, iterations,
@@ -270,12 +270,6 @@ def optimize_image(
                     datetime.timedelta(seconds=end_time_iteration - start_time)
                 )
             )
-
-            if iteration % 500 == 0:
-                logger.info(message)
-
-            else:
-                logger.debug(message)
 
         images = session.run(
             output_node, feed_dict={input_node: np.array([image])}
