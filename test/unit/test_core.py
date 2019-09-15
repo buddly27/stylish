@@ -192,7 +192,7 @@ def test_extract_style_from_path(
     [
         (
             {},
-            stylish.core.ITERATIONS_NUMBER,
+            4,
             stylish.core.LEARNING_RATE,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
@@ -212,7 +212,7 @@ def test_extract_style_from_path(
         ),
         (
             {"learning_rate": 0.99},
-            stylish.core.ITERATIONS_NUMBER,
+            4,
             0.99,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
@@ -222,7 +222,7 @@ def test_extract_style_from_path(
         ),
         (
             {"content_weight": 0.99},
-            stylish.core.ITERATIONS_NUMBER,
+            4,
             stylish.core.LEARNING_RATE,
             0.99,
             stylish.core.STYLE_WEIGHT,
@@ -232,7 +232,7 @@ def test_extract_style_from_path(
         ),
         (
             {"style_weight": 0.99},
-            stylish.core.ITERATIONS_NUMBER,
+            4,
             stylish.core.LEARNING_RATE,
             stylish.core.CONTENT_WEIGHT,
             0.99,
@@ -242,7 +242,7 @@ def test_extract_style_from_path(
         ),
         (
             {"tv_weight": 0.99},
-            stylish.core.ITERATIONS_NUMBER,
+            4,
             stylish.core.LEARNING_RATE,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
@@ -252,7 +252,7 @@ def test_extract_style_from_path(
         ),
         (
             {"content_layer": "__CONTENT_LAYER__"},
-            stylish.core.ITERATIONS_NUMBER,
+            4,
             stylish.core.LEARNING_RATE,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
@@ -262,7 +262,7 @@ def test_extract_style_from_path(
         ),
         (
             {"style_layer_names": ["__LAYER_1__", "__LAYER_2__"]},
-            stylish.core.ITERATIONS_NUMBER,
+            4,
             stylish.core.LEARNING_RATE,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
@@ -625,3 +625,7 @@ def test_optimize_model(
     mocked_core_save_model.assert_called_once_with(
         mocked_session, input_node, output_node, "/path/to/output_model"
     )
+
+
+def test_get_next_batch():
+    """Return list of images for current batch index."""

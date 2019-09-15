@@ -141,10 +141,9 @@ def extract_style_from_path(path, vgg_mapping, style_layers, image_size=None):
 
 
 def optimize_image(
-    image, style_mapping, vgg_mapping, log_path, iterations=ITERATIONS_NUMBER,
-    learning_rate=LEARNING_RATE, content_weight=CONTENT_WEIGHT,
-    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, content_layer=None,
-    style_layer_names=None
+    image, style_mapping, vgg_mapping, log_path, iterations=None,
+    learning_rate=None, content_weight=None, style_weight=None, tv_weight=None,
+    content_layer=None, style_layer_names=None
 ):
     """Transfer style mapping features to *image* and return result.
 
@@ -166,7 +165,7 @@ def optimize_image(
         with :term:`Tensorboard` to analyze the training.
 
     :param iterations: number of time that image should be trained against
-        the style mapping. Default is :data:`ITERATIONS`.
+        the style mapping. Default is :data:`ITERATIONS_NUMBER`.
 
     :param learning_rate: :term:`Learning Rate` value to train the model.
         Default is :data:`LEARNING_RATE`.
@@ -221,9 +220,9 @@ def optimize_image(
         cost = compute_cost(
             session, style_mapping, output_node,
             batch_size=1,
-            content_weight=content_weight,
-            style_weight=style_weight,
-            tv_weight=tv_weight,
+            content_weight=content_weight or CONTENT_WEIGHT,
+            style_weight=style_weight or STYLE_WEIGHT,
+            tv_weight=tv_weight or TV_WEIGHT,
             content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
             style_layer_names=style_layer_names or [
                 name for name, _ in stylish.vgg.STYLE_LAYERS
@@ -233,7 +232,7 @@ def optimize_image(
         )
 
         # Apply optimizer to attempt to reduce the total cost.
-        optimizer = tf.train.AdamOptimizer(learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate or LEARNING_RATE)
         training_node = optimizer.minimize(cost)
 
         # Add graph to writer to visualize it with tensorboard.
@@ -248,7 +247,7 @@ def optimize_image(
         # Initiate timer and predictions.
         start_time = time.time()
 
-        for iteration in range(iterations):
+        for iteration in range(iterations or ITERATIONS_NUMBER):
             logger.debug("Start processing iteration #{}.".format(iteration))
             start_time_iteration = time.time()
 
@@ -265,7 +264,7 @@ def optimize_image(
             logger.info(
                 "Iteration {}/{} processed [duration: {} - total: {}]"
                 .format(
-                    iteration, iterations,
+                    iteration, iterations or ITERATIONS_NUMBER,
                     datetime.timedelta(seconds=duration),
                     datetime.timedelta(seconds=end_time_iteration - start_time)
                 )
@@ -279,11 +278,9 @@ def optimize_image(
 
 def optimize_model(
     training_images, style_mapping, vgg_mapping, model_path, log_path,
-    learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, batch_shape=BATCH_SHAPE,
-    epoch_number=EPOCHS_NUMBER, content_weight=CONTENT_WEIGHT,
-    style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, content_layer=None,
+    learning_rate=None, batch_size=None, batch_shape=None, epoch_number=None,
+    content_weight=None, style_weight=None, tv_weight=None, content_layer=None,
     style_layer_names=None
-
 ):
     """Create style generator model from a style mapping and a training dataset.
 
@@ -370,10 +367,10 @@ def optimize_model(
         # Compute total cost.
         cost = compute_cost(
             session, style_mapping, output_node,
-            batch_size=batch_size,
-            content_weight=content_weight,
-            style_weight=style_weight,
-            tv_weight=tv_weight,
+            batch_size=batch_size or BATCH_SIZE,
+            content_weight=content_weight or CONTENT_WEIGHT,
+            style_weight=style_weight or STYLE_WEIGHT,
+            tv_weight=tv_weight or TV_WEIGHT,
             content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
             style_layer_names=style_layer_names or [
                 name for name, _ in stylish.vgg.STYLE_LAYERS
@@ -383,7 +380,7 @@ def optimize_model(
         )
 
         # Apply optimizer to attempt to reduce the total cost.
-        optimizer = tf.train.AdamOptimizer(learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate or LEARNING_RATE)
         training_node = optimizer.minimize(cost)
 
         # Add graph to writer to visualize it with tensorboard.
@@ -400,18 +397,19 @@ def optimize_model(
 
         train_size = len(training_images)
 
-        for epoch in range(epoch_number):
+        for epoch in range(epoch_number or EPOCHS_NUMBER):
             logger.info("Start epoch #{}.".format(epoch))
 
             start_time_epoch = time.time()
 
-            for index in range(train_size // batch_size):
+            for index in range(train_size // (batch_size or BATCH_SIZE)):
                 logger.debug("Start processing batch #{}.".format(index))
                 start_time_batch = time.time()
 
                 images = get_next_batch(
-                    index, training_images, batch_size=batch_size,
-                    batch_shape=batch_shape
+                    index, training_images,
+                    batch_size=batch_size or BATCH_SIZE,
+                    batch_shape=batch_shape or BATCH_SHAPE
                 )
 
                 # Execute the nodes within the session.
