@@ -148,8 +148,9 @@ def optimize_image(
 ):
     """Transfer style mapping features to *image* and return result.
 
-    The training duration can vary depending on the number of iterations chosen
-    and the power of your workstation.
+    The training duration can vary depending on the :term:`Hyperparameters
+    <Hyperparameter>` specified (iterations number) and the power
+    of your workstation.
 
     :param image: 3-D Numpy array representing the image loaded.
 
@@ -333,8 +334,8 @@ def optimize_model(
         :data:`stylish.vgg.CONTENT_LAYER`.
 
     :param style_layers: Layer names from pre-trained :term:`Vgg19` model
-        used to extract the style information. Default are layer names from
-        :data:`stylish.vgg.STYLE_LAYERS` tuples.
+        used to extract the style information with corresponding weights.
+        Default is :data:`stylish.vgg.STYLE_LAYERS`.
 
     :return: None
 
@@ -374,8 +375,8 @@ def optimize_model(
             style_weight=style_weight,
             tv_weight=tv_weight,
             content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
-            style_layers=style_layers or [
-                name for name, _ in stylish.vgg.STYLE_LAYERS
+            style_layers=[
+                name for name, _ in style_layers or stylish.vgg.STYLE_LAYERS
             ],
             input_namespace="vgg1",
             output_namespace="vgg2"
