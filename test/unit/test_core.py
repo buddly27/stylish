@@ -20,6 +20,12 @@ def mocked_tf_placeholder(mocker):
 
 
 @pytest.fixture()
+def mocked_tf_identity(mocker):
+    """Return mocked :func:`tensorflow.identity`."""
+    return mocker.patch("tensorflow.identity")
+
+
+@pytest.fixture()
 def mocked_tf_config_proto(mocker):
     """Return mocked :class:`tensorflow.ConfigProto`."""
     return mocker.patch("tensorflow.ConfigProto")
@@ -65,6 +71,18 @@ def mocked_core_create_session(mocker):
 def mocked_core_compute_cost(mocker):
     """Return mocked :func:`stylish.core.compute_cost`."""
     return mocker.patch("stylish.core.compute_cost")
+
+
+@pytest.fixture()
+def mocked_core_get_next_batch(mocker):
+    """Return mocked :func:`stylish.core.get_next_batch`."""
+    return mocker.patch("stylish.core.get_next_batch")
+
+
+@pytest.fixture()
+def mocked_core_save_model(mocker):
+    """Return mocked :func:`stylish.core.save_model`."""
+    return mocker.patch("stylish.core.save_model")
 
 
 @pytest.fixture()
@@ -328,7 +346,6 @@ def test_optimize_image(
         style_layers=[name for name, _ in style_layers],
         input_namespace="vgg1",
         output_namespace="vgg2"
-
     )
 
     mocked_tf_global_variables_initializer.assert_called_once()
@@ -356,3 +373,255 @@ def test_optimize_image(
     for index in range(iterations + 1):
         input_image = args[index + 1][1]["feed_dict"][input_node]
         assert np.all(input_image == np.ones((1, 576, 720, 3)))
+
+
+@pytest.mark.parametrize(
+    "options, learning_rate, batch_size, batch_shape, epoch_number, "
+    "content_weight, style_weight, tv_weight, content_layer, style_layers",
+    [
+        (
+            {},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"learning_rate": 0.99},
+            0.99,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"batch_size": 1},
+            stylish.core.LEARNING_RATE,
+            1,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"batch_shape": (64, 64, 3)},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            (64, 64, 3),
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"epoch_number": 99},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            99,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"content_weight": 0.99},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            0.99,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"style_weight": 0.99},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            0.99,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"tv_weight": 0.99},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            0.99,
+            stylish.vgg.CONTENT_LAYER,
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"content_layer": "__CONTENT_LAYER__"},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            "__CONTENT_LAYER__",
+            stylish.vgg.STYLE_LAYERS,
+        ),
+        (
+            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_2__", 2)]},
+            stylish.core.LEARNING_RATE,
+            stylish.core.BATCH_SIZE,
+            stylish.core.BATCH_SHAPE,
+            stylish.core.EPOCHS_NUMBER,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            [("__LAYER_1__", 1), ("__LAYER_2__", 2)],
+        )
+    ],
+    ids=[
+        "simple",
+        "with-learning-rate",
+        "with-batch-size",
+        "with-batch-shape",
+        "with-epoch-number",
+        "with-content-weight",
+        "with-style-weight",
+        "with-tv-weight",
+        "with-content-layer",
+        "with-style-layers",
+    ]
+)
+def test_optimize_model(
+    options, learning_rate, batch_size, batch_shape, epoch_number,
+    content_weight, style_weight, tv_weight, content_layer, style_layers,
+    mocker, mocked_core_create_session, mocked_transform_network,
+    mocked_vgg_network, mocked_core_compute_cost, mocked_tf_summary,
+    mocked_tf_train, mocked_tf_placeholder, mocked_tf_identity,
+    mocked_tf_global_variables_initializer, mocked_core_get_next_batch,
+    mocked_core_save_model
+
+):
+    """Create style generator model from a style mapping and a training dataset.
+    """
+    training_images = [
+        "/path/to/image1",
+        "/path/to/image2",
+        "/path/to/image3",
+        "/path/to/image4",
+        "/path/to/image5",
+    ]
+
+    input_node = mocked_tf_placeholder.return_value
+    output_node = mocked_tf_identity.return_value
+
+    mocked_core_compute_cost.return_value = "__COST__"
+    mocked_core_get_next_batch.return_value = "__IMAGES_BATCH__"
+    mocked_session = (
+         mocked_core_create_session.return_value.__enter__.return_value
+    )
+
+    # Returned value for global variables initializer
+    session_results = [None]
+
+    # Returned values for each iteration
+    session_results += (
+        [(None, "__SUMMARY__")]
+        * (len(training_images) // batch_size)
+        * epoch_number
+    )
+
+    mocked_session.run.side_effect = session_results
+
+    # Run command to test
+    stylish.core.optimize_model(
+        training_images,
+        "__STYLE__", "__VGG__",
+        "/path/to/output_model",
+        "/path/to/log",
+        **options
+    )
+
+    mocked_core_create_session.assert_called_once()
+    mocked_tf_placeholder.assert_called_once_with(
+        tf.float32, shape=(None, None, None, None), name="input"
+    )
+    mocked_transform_network.assert_called_once_with(
+        (input_node - stylish.vgg.VGG19_MEAN) / 255.0
+    )
+    mocked_tf_identity.assert_called_once_with(
+        mocked_transform_network.return_value, name="output"
+    )
+
+    assert mocked_vgg_network.call_count == 2
+    mocked_vgg_network.assert_any_call(
+        "__VGG__", input_node - stylish.vgg.VGG19_MEAN
+    )
+    mocked_vgg_network.assert_any_call(
+        "__VGG__", output_node - stylish.vgg.VGG19_MEAN
+    )
+
+    mocked_core_compute_cost.assert_called_once_with(
+        mocked_session, "__STYLE__", output_node,
+        batch_size=batch_size,
+        content_weight=content_weight,
+        style_weight=style_weight,
+        tv_weight=tv_weight,
+        content_layer=content_layer,
+        style_layers=[name for name, _ in style_layers],
+        input_namespace="vgg1",
+        output_namespace="vgg2"
+    )
+
+    mocked_tf_global_variables_initializer.assert_called_once()
+    mocked_tf_train.AdamOptimizer.assert_called_once_with(learning_rate)
+    mocked_tf_train.AdamOptimizer.return_value.minimize("__COST__")
+
+    assert mocked_session.run.call_count == (
+        (len(training_images) // batch_size) * epoch_number + 1
+    )
+    mocked_session.run.assert_any_call(
+        mocked_tf_global_variables_initializer.return_value
+    )
+    mocked_session.run.assert_any_call(
+        [
+            mocked_tf_train.AdamOptimizer.return_value.minimize.return_value,
+            mocked_tf_summary.merge_all.return_value
+        ],
+        feed_dict={input_node: "__IMAGES_BATCH__"}
+    )
+
+    assert mocked_core_get_next_batch.call_count == (
+        (len(training_images) // batch_size)
+        * epoch_number
+    )
+    mocked_core_get_next_batch.assert_any_call(
+        mocker.ANY, training_images,
+        batch_size=batch_size,
+        batch_shape=batch_shape
+    )
+
+    mocked_core_save_model.assert_called_once_with(
+        mocked_session, input_node, output_node, "/path/to/output_model"
+    )
