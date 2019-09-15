@@ -188,7 +188,7 @@ def test_extract_style_from_path(
 
 @pytest.mark.parametrize(
     "options, iterations, learning_rate, content_weight, style_weight, "
-    "tv_weight, content_layer, style_layers",
+    "tv_weight, content_layer, style_layer_names",
     [
         (
             {},
@@ -198,7 +198,7 @@ def test_extract_style_from_path(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"iterations": 1},
@@ -208,7 +208,7 @@ def test_extract_style_from_path(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"learning_rate": 0.99},
@@ -218,7 +218,7 @@ def test_extract_style_from_path(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"content_weight": 0.99},
@@ -228,7 +228,7 @@ def test_extract_style_from_path(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"style_weight": 0.99},
@@ -238,7 +238,7 @@ def test_extract_style_from_path(
             0.99,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"tv_weight": 0.99},
@@ -248,7 +248,7 @@ def test_extract_style_from_path(
             stylish.core.STYLE_WEIGHT,
             0.99,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"content_layer": "__CONTENT_LAYER__"},
@@ -258,17 +258,17 @@ def test_extract_style_from_path(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             "__CONTENT_LAYER__",
-            stylish.vgg.STYLE_LAYERS
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
-            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_2__", 2)]},
+            {"style_layer_names": ["__LAYER_1__", "__LAYER_2__"]},
             stylish.core.ITERATIONS_NUMBER,
             stylish.core.LEARNING_RATE,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            [("__LAYER_1__", 1), ("__LAYER_2__", 2)]
+            ["__LAYER_1__", "__LAYER_2__"]
         )
     ],
     ids=[
@@ -279,15 +279,15 @@ def test_extract_style_from_path(
         "with-style-weight",
         "with-tv-weight",
         "with-content-layer",
-        "with-style-layers",
+        "with-style-layer-names",
     ]
 )
 def test_optimize_image(
     options, iterations, learning_rate, content_weight, style_weight,
-    tv_weight, content_layer, style_layers, mocker, mocked_core_create_session,
-    mocked_transform_network, mocked_vgg_network, mocked_core_compute_cost,
-    mocked_tf_summary, mocked_tf_train, mocked_tf_placeholder,
-    mocked_tf_global_variables_initializer
+    tv_weight, content_layer, style_layer_names, mocker,
+    mocked_core_create_session, mocked_transform_network, mocked_vgg_network,
+    mocked_core_compute_cost, mocked_tf_summary, mocked_tf_train,
+    mocked_tf_placeholder, mocked_tf_global_variables_initializer
 ):
     """Transfer style mapping features to image."""
     # Update default iterations to 10 to improve speed
@@ -343,7 +343,7 @@ def test_optimize_image(
         style_weight=style_weight,
         tv_weight=tv_weight,
         content_layer=content_layer,
-        style_layers=[name for name, _ in style_layers],
+        style_layer_names=style_layer_names,
         input_namespace="vgg1",
         output_namespace="vgg2"
     )
@@ -377,7 +377,7 @@ def test_optimize_image(
 
 @pytest.mark.parametrize(
     "options, learning_rate, batch_size, batch_shape, epoch_number, "
-    "content_weight, style_weight, tv_weight, content_layer, style_layers",
+    "content_weight, style_weight, tv_weight, content_layer, style_layer_names",
     [
         (
             {},
@@ -389,7 +389,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"learning_rate": 0.99},
@@ -401,7 +401,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"batch_size": 1},
@@ -413,7 +413,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"batch_shape": (64, 64, 3)},
@@ -425,7 +425,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"epoch_number": 99},
@@ -437,7 +437,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"content_weight": 0.99},
@@ -449,7 +449,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"style_weight": 0.99},
@@ -461,7 +461,7 @@ def test_optimize_image(
             0.99,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"tv_weight": 0.99},
@@ -473,7 +473,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             0.99,
             stylish.vgg.CONTENT_LAYER,
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
             {"content_layer": "__CONTENT_LAYER__"},
@@ -485,10 +485,10 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             "__CONTENT_LAYER__",
-            stylish.vgg.STYLE_LAYERS,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
-            {"style_layers": [("__LAYER_1__", 1), ("__LAYER_2__", 2)]},
+            {"style_layer_names": ["__LAYER_1__", "__LAYER_2__"]},
             stylish.core.LEARNING_RATE,
             stylish.core.BATCH_SIZE,
             stylish.core.BATCH_SHAPE,
@@ -497,7 +497,7 @@ def test_optimize_image(
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
             stylish.vgg.CONTENT_LAYER,
-            [("__LAYER_1__", 1), ("__LAYER_2__", 2)],
+            ["__LAYER_1__", "__LAYER_2__"],
         )
     ],
     ids=[
@@ -510,12 +510,12 @@ def test_optimize_image(
         "with-style-weight",
         "with-tv-weight",
         "with-content-layer",
-        "with-style-layers",
+        "with-style-layer-names",
     ]
 )
 def test_optimize_model(
     options, learning_rate, batch_size, batch_shape, epoch_number,
-    content_weight, style_weight, tv_weight, content_layer, style_layers,
+    content_weight, style_weight, tv_weight, content_layer, style_layer_names,
     mocker, mocked_core_create_session, mocked_transform_network,
     mocked_vgg_network, mocked_core_compute_cost, mocked_tf_summary,
     mocked_tf_train, mocked_tf_placeholder, mocked_tf_identity,
@@ -589,7 +589,7 @@ def test_optimize_model(
         style_weight=style_weight,
         tv_weight=tv_weight,
         content_layer=content_layer,
-        style_layers=[name for name, _ in style_layers],
+        style_layer_names=style_layer_names,
         input_namespace="vgg1",
         output_namespace="vgg2"
     )

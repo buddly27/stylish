@@ -99,7 +99,7 @@ def transform_image(
         style_weight=style_weight or stylish.core.STYLE_WEIGHT,
         tv_weight=tv_weight or stylish.core.TV_WEIGHT,
         content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
-        style_layers=[
+        style_layer_names=[
             name for name, _ in style_layers or stylish.vgg.STYLE_LAYERS
         ]
     )
@@ -211,7 +211,7 @@ def create_model(
         style_weight=style_weight or stylish.core.STYLE_WEIGHT,
         tv_weight=tv_weight or stylish.core.TV_WEIGHT,
         content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
-        style_layers=[
+        style_layer_names=[
             name for name, _ in style_layers or stylish.vgg.STYLE_LAYERS
         ]
     )

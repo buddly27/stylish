@@ -200,7 +200,7 @@ def test_transform_image(
         style_weight=style_weight,
         tv_weight=tv_weight,
         content_layer=content_layer,
-        style_layers=[name for name, _ in style_layers]
+        style_layer_names=[name for name, _ in style_layers]
     )
 
     mocked_filesystem_save_image.assert_called_once_with(
@@ -246,7 +246,7 @@ def test_transform_image_with_log(
         style_weight=stylish.core.STYLE_WEIGHT,
         tv_weight=stylish.core.TV_WEIGHT,
         content_layer=stylish.vgg.CONTENT_LAYER,
-        style_layers=[name for name, _ in stylish.vgg.STYLE_LAYERS]
+        style_layer_names=[name for name, _ in stylish.vgg.STYLE_LAYERS]
     )
 
     mocked_filesystem_save_image.assert_called_once_with(
@@ -463,7 +463,7 @@ def test_create_model(
         style_weight=style_weight,
         tv_weight=tv_weight,
         content_layer=content_layer,
-        style_layers=[name for name, _ in style_layers]
+        style_layer_names=[name for name, _ in style_layers]
     )
 
 
@@ -507,7 +507,7 @@ def test_create_model_with_log(
         style_weight=stylish.core.STYLE_WEIGHT,
         tv_weight=stylish.core.TV_WEIGHT,
         content_layer=stylish.vgg.CONTENT_LAYER,
-        style_layers=[name for name, _ in stylish.vgg.STYLE_LAYERS]
+        style_layer_names=[name for name, _ in stylish.vgg.STYLE_LAYERS]
     )
 
 

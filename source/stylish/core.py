@@ -144,7 +144,7 @@ def optimize_image(
     image, style_mapping, vgg_mapping, log_path, iterations=ITERATIONS_NUMBER,
     learning_rate=LEARNING_RATE, content_weight=CONTENT_WEIGHT,
     style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, content_layer=None,
-    style_layers=None
+    style_layer_names=None
 ):
     """Transfer style mapping features to *image* and return result.
 
@@ -184,9 +184,9 @@ def optimize_image(
         used to extract the content information. Default is
         :data:`stylish.vgg.CONTENT_LAYER`.
 
-    :param style_layers: Layer names from pre-trained :term:`Vgg19` model
-        used to extract the style information with corresponding weights.
-        Default is :data:`stylish.vgg.STYLE_LAYERS`.
+    :param style_layer_names: Layer names from pre-trained :term:`Vgg19` model
+        used to extract the style information. Default are layer names extracted
+        from :data:`stylish.vgg.STYLE_LAYERS` tuples.
 
     :return: Path to output image generated.
 
@@ -225,8 +225,8 @@ def optimize_image(
             style_weight=style_weight,
             tv_weight=tv_weight,
             content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
-            style_layers=[
-                name for name, _ in style_layers or stylish.vgg.STYLE_LAYERS
+            style_layer_names=style_layer_names or [
+                name for name, _ in stylish.vgg.STYLE_LAYERS
             ],
             input_namespace="vgg1",
             output_namespace="vgg2"
@@ -262,7 +262,7 @@ def optimize_image(
             end_time_iteration = time.time()
             duration = end_time_iteration - start_time_iteration
 
-            logger.info(
+            message = (
                 "Iteration {}/{} processed [duration: {} - total: {}]"
                 .format(
                     iteration, iterations,
@@ -270,6 +270,12 @@ def optimize_image(
                     datetime.timedelta(seconds=end_time_iteration - start_time)
                 )
             )
+
+            if iteration % 500 == 0:
+                logger.info(message)
+
+            else:
+                logger.debug(message)
 
         images = session.run(
             output_node, feed_dict={input_node: np.array([image])}
@@ -282,7 +288,7 @@ def optimize_model(
     learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, batch_shape=BATCH_SHAPE,
     epoch_number=EPOCHS_NUMBER, content_weight=CONTENT_WEIGHT,
     style_weight=STYLE_WEIGHT, tv_weight=TV_WEIGHT, content_layer=None,
-    style_layers=None
+    style_layer_names=None
 
 ):
     """Create style generator model from a style mapping and a training dataset.
@@ -333,9 +339,9 @@ def optimize_model(
         used to extract the content information. Default is
         :data:`stylish.vgg.CONTENT_LAYER`.
 
-    :param style_layers: Layer names from pre-trained :term:`Vgg19` model
-        used to extract the style information with corresponding weights.
-        Default is :data:`stylish.vgg.STYLE_LAYERS`.
+    :param style_layer_names: Layer names from pre-trained :term:`Vgg19` model
+        used to extract the style information. Default are layer names extracted
+        from :data:`stylish.vgg.STYLE_LAYERS` tuples.
 
     :return: None
 
@@ -375,8 +381,8 @@ def optimize_model(
             style_weight=style_weight,
             tv_weight=tv_weight,
             content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
-            style_layers=[
-                name for name, _ in style_layers or stylish.vgg.STYLE_LAYERS
+            style_layer_names=style_layer_names or [
+                name for name, _ in stylish.vgg.STYLE_LAYERS
             ],
             input_namespace="vgg1",
             output_namespace="vgg2"
@@ -458,7 +464,7 @@ def optimize_model(
 def compute_cost(
     session, style_mapping, output_node, batch_size=BATCH_SIZE,
     content_weight=CONTENT_WEIGHT, style_weight=STYLE_WEIGHT,
-    tv_weight=TV_WEIGHT, content_layer=None, style_layers=None,
+    tv_weight=TV_WEIGHT, content_layer=None, style_layer_names=None,
     input_namespace="vgg1", output_namespace="vgg2"
 ):
     """Compute total cost.
@@ -487,9 +493,9 @@ def compute_cost(
         used to extract the content information. Default is
         :data:`stylish.vgg.CONTENT_LAYER`.
 
-    :param style_layers: Layer names from pre-trained :term:`Vgg19` model
-        used to extract the style information. Default are layer names from
-        :data:`stylish.vgg.STYLE_LAYERS` tuples.
+    :param style_layer_names: Layer names from pre-trained :term:`Vgg19` model
+        used to extract the style information. Default are layer names extracted
+        from :data:`stylish.vgg.STYLE_LAYERS` tuples.
 
     :param input_namespace: Namespace used for the pre-trained :term:`Vgg19`
         model added after the input node. Default is "vgg1".
@@ -501,7 +507,7 @@ def compute_cost(
 
     """
     content_layer = content_layer or stylish.vgg.CONTENT_LAYER
-    style_layers = style_layers or [
+    style_layer_names = style_layer_names or [
         name for name, _ in stylish.vgg.STYLE_LAYERS
     ]
 
@@ -517,8 +523,11 @@ def compute_cost(
     # Compute style cost.
     style_cost = compute_style_cost(
         session, style_mapping,
-        style_layers,
-        ["{}/{}:0".format(output_namespace, name) for name in style_layers],
+        style_layer_names,
+        [
+            "{}/{}:0".format(output_namespace, name)
+            for name in style_layer_names
+        ],
         batch_size=batch_size,
         style_weight=style_weight
     )
