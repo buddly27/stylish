@@ -70,9 +70,8 @@ def transform_image(
 
     """
     # Compute output image path.
-    base_name, extension = os.path.splitext(path)
-    base_name = os.path.basename(base_name)
-    output_image = os.path.join(output_path, base_name + extension)
+    base_name = os.path.basename(path)
+    output_image = os.path.join(output_path, base_name)
 
     # Extract weight and bias from pre-trained Vgg19 mapping.
     vgg_mapping = stylish.vgg.extract_mapping(vgg_path)
@@ -100,8 +99,8 @@ def transform_image(
         style_weight=style_weight or stylish.core.STYLE_WEIGHT,
         tv_weight=tv_weight or stylish.core.TV_WEIGHT,
         content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
-        style_layers=style_layers or [
-            name for name, _ in stylish.vgg.STYLE_LAYERS
+        style_layers=[
+            name for name, _ in style_layers or stylish.vgg.STYLE_LAYERS
         ]
     )
 
@@ -212,8 +211,8 @@ def create_model(
         style_weight=style_weight or stylish.core.STYLE_WEIGHT,
         tv_weight=tv_weight or stylish.core.TV_WEIGHT,
         content_layer=content_layer or stylish.vgg.CONTENT_LAYER,
-        style_layers=style_layers or [
-            name for name, _ in stylish.vgg.STYLE_LAYERS
+        style_layers=[
+            name for name, _ in style_layers or stylish.vgg.STYLE_LAYERS
         ]
     )
 
@@ -226,7 +225,7 @@ def apply_model(model_path, input_path, output_path):
         >>> apply_model(
         ...    "/path/to/saved_model/",
         ...    "/path/to/image.jpg",
-        ...    "/path/to/output/"
+        ...    "/path/to/output_image/"
         ... )
 
         /path/to/output/image.jpg
@@ -246,9 +245,8 @@ def apply_model(model_path, input_path, output_path):
 
     """
     # Compute output image path.
-    base_name, extension = os.path.splitext(input_path)
-    base_name = os.path.basename(base_name)
-    output_image = os.path.join(output_path, base_name + extension)
+    base_name = os.path.basename(input_path)
+    output_image = os.path.join(output_path, base_name)
 
     # Infer model and save image.
     image = stylish.core.infer_model(model_path, input_path)
@@ -259,6 +257,16 @@ def apply_model(model_path, input_path, output_path):
 
 def extract_style_pattern(path, output_path, vgg_path, style_layers=None):
     """Generate style pattern images from image *path*.
+
+    Usage example::
+
+        >>> apply_model(
+        ...    "/path/to/style_image.jpg",
+        ...    "/path/to/output/"
+        ...    "/path/to/vgg_model.mat"
+        ... )
+
+        /path/to/output/image.jpg
 
     :param path: path to the image to extract style pattern images from.
 
