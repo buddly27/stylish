@@ -56,6 +56,18 @@ def mocked_tf_train(mocker):
 
 
 @pytest.fixture()
+def mocked_tf_saved_model(mocker):
+    """Return mocked :mod:`tensorflow.saved_model`."""
+    return mocker.patch("tensorflow.saved_model")
+
+
+@pytest.fixture()
+def mocked_tf_compat(mocker):
+    """Return mocked :mod:`tensorflow.compat`."""
+    return mocker.patch("tensorflow.compat")
+
+
+@pytest.fixture()
 def mocked_tf_summary(mocker):
     """Return mocked :mod:`tensorflow.summary`."""
     return mocker.patch("tensorflow.summary")
@@ -74,9 +86,9 @@ def mocked_core_compute_cost(mocker):
 
 
 @pytest.fixture()
-def mocked_core_get_next_batch(mocker):
-    """Return mocked :func:`stylish.core.get_next_batch`."""
-    return mocker.patch("stylish.core.get_next_batch")
+def mocked_core_load_dataset_batch(mocker):
+    """Return mocked :func:`stylish.core.load_dataset_batch`."""
+    return mocker.patch("stylish.core.load_dataset_batch")
 
 
 @pytest.fixture()
@@ -519,7 +531,7 @@ def test_optimize_model(
     mocker, mocked_core_create_session, mocked_transform_network,
     mocked_vgg_network, mocked_core_compute_cost, mocked_tf_summary,
     mocked_tf_train, mocked_tf_placeholder, mocked_tf_identity,
-    mocked_tf_global_variables_initializer, mocked_core_get_next_batch,
+    mocked_tf_global_variables_initializer, mocked_core_load_dataset_batch,
     mocked_core_save_model
 
 ):
@@ -537,7 +549,7 @@ def test_optimize_model(
     output_node = mocked_tf_identity.return_value
 
     mocked_core_compute_cost.return_value = "__COST__"
-    mocked_core_get_next_batch.return_value = "__IMAGES_BATCH__"
+    mocked_core_load_dataset_batch.return_value = "__IMAGES_BATCH__"
     mocked_session = (
          mocked_core_create_session.return_value.__enter__.return_value
     )
@@ -612,11 +624,11 @@ def test_optimize_model(
         feed_dict={input_node: "__IMAGES_BATCH__"}
     )
 
-    assert mocked_core_get_next_batch.call_count == (
+    assert mocked_core_load_dataset_batch.call_count == (
         (len(training_images) // batch_size)
         * epoch_number
     )
-    mocked_core_get_next_batch.assert_any_call(
+    mocked_core_load_dataset_batch.assert_any_call(
         mocker.ANY, training_images,
         batch_size=batch_size,
         batch_shape=batch_shape
@@ -627,5 +639,159 @@ def test_optimize_model(
     )
 
 
-def test_get_next_batch():
+@pytest.mark.parametrize("options, shape", [
+    ({}, stylish.core.BATCH_SHAPE),
+    ({"batch_shape": (576, 720, 3)}, (576, 720, 3)),
+], ids=[
+    "simple",
+    "with-batch-shape",
+])
+def test_load_dataset_batch(
+    options, shape, mocked_filesystem_load_image
+):
     """Return list of images for current batch index."""
+    mocked_filesystem_load_image.return_value = np.ones(shape)
+
+    training_images = [
+        "Image01", "Image02", "Image03", "Image04", "Image05",
+        "Image06", "Image07", "Image08", "Image09", "Image10",
+    ]
+
+    images = stylish.core.load_dataset_batch(0, training_images, **options)
+    assert np.all(images == np.ones((4,) + shape))
+
+    assert mocked_filesystem_load_image.call_count == 4
+    mocked_filesystem_load_image.assert_any_call("Image01", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image02", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image03", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image04", image_size=shape)
+
+    # Reset mock to test second batch
+    mocked_filesystem_load_image.reset_mock()
+
+    images = stylish.core.load_dataset_batch(1, training_images, **options)
+    assert np.all(images == np.ones((4,) + shape))
+
+    assert mocked_filesystem_load_image.call_count == 4
+    mocked_filesystem_load_image.assert_any_call("Image05", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image06", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image07", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image08", image_size=shape)
+
+
+@pytest.mark.parametrize("options, shape", [
+    ({}, stylish.core.BATCH_SHAPE),
+    ({"batch_shape": (576, 720, 3)}, (576, 720, 3)),
+], ids=[
+    "simple",
+    "with-batch-shape",
+])
+def test_load_dataset_batch_with_batch_size(
+    options, shape, mocked_filesystem_load_image
+):
+    """Return list of images for current batch index with specific batch size.
+    """
+    mocked_filesystem_load_image.return_value = np.ones(shape)
+
+    training_images = [
+        "Image01", "Image02", "Image03", "Image04", "Image05",
+        "Image06", "Image07", "Image08", "Image09", "Image10",
+    ]
+
+    images = stylish.core.load_dataset_batch(
+        0, training_images, batch_size=2, **options
+    )
+    assert np.all(images == np.ones((2,) + shape))
+
+    assert mocked_filesystem_load_image.call_count == 2
+    mocked_filesystem_load_image.assert_any_call("Image01", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image02", image_size=shape)
+
+    # Reset mock to test second batch
+    mocked_filesystem_load_image.reset_mock()
+
+    images = stylish.core.load_dataset_batch(
+        1, training_images, batch_size=2, **options
+    )
+    assert np.all(images == np.ones((2,) + shape))
+
+    assert mocked_filesystem_load_image.call_count == 2
+    mocked_filesystem_load_image.assert_any_call("Image03", image_size=shape)
+    mocked_filesystem_load_image.assert_any_call("Image04", image_size=shape)
+
+
+def test_save_model(mocked_tf_saved_model, mocked_tf_compat):
+    """Save trained model."""
+    build_tensor_info = mocked_tf_compat.v1.saved_model.build_tensor_info
+    build_tensor_info.side_effect = ["__INPUT_INFO__", "__OUTPUT_INFO__"]
+
+    signature_def_utils = mocked_tf_saved_model.signature_def_utils
+    signature_def_utils.build_signature_def.return_value = "__SIGNATURE__"
+
+    builder = mocked_tf_saved_model.builder.SavedModelBuilder
+
+    # Run command to test
+    stylish.core.save_model(
+        "__SESSION__",
+        "__INPUT_NODE__",
+        "__OUTPUT_NODE__",
+        "/path"
+    )
+
+    assert build_tensor_info.call_count == 2
+    build_tensor_info.assert_any_call("__INPUT_NODE__")
+    build_tensor_info.assert_any_call("__OUTPUT_NODE__")
+
+    signature_def_utils.build_signature_def.assert_called_once_with(
+        inputs={"input": "__INPUT_INFO__"},
+        outputs={"output": "__OUTPUT_INFO__"},
+        method_name=(
+            mocked_tf_saved_model.signature_constants.PREDICT_METHOD_NAME
+        )
+    )
+
+    builder.assert_called_once_with("/path")
+    builder.return_value.add_meta_graph_and_variables.assert_called_once_with(
+        "__SESSION__", [mocked_tf_saved_model.tag_constants.SERVING],
+        signature_def_map={"predict_images": "__SIGNATURE__"},
+    )
+    builder.return_value.save.assert_called_once()
+
+
+def test_infer_model(
+    mocker, mocked_filesystem_load_image, mocked_tf_get_default_graph,
+    mocked_tf_compat, mocked_core_create_session
+):
+    """Inferred trained model to convert input image."""
+    mocked_graph = mocked_tf_get_default_graph.return_value
+    mocked_graph.get_tensor_by_name.side_effect = ["INPUT", "OUTPUT"]
+    mocked_filesystem_load_image.return_value = np.ones((576, 720, 3))
+    mocked_session = (
+         mocked_core_create_session.return_value.__enter__.return_value
+    )
+    mocked_session.run.return_value = ["__GENERATED_IMAGE__"]
+
+    # Run command to test
+    image = stylish.core.infer_model(
+        "/path/to/model", "/path/to/input_image.jpg"
+    )
+    assert image == "__GENERATED_IMAGE__"
+
+    mocked_tf_get_default_graph.assert_called_once()
+
+    mocked_tf_compat.v1.saved_model.load.assert_called_once_with(
+        mocked_session, ["serve"], "/path/to/model"
+    )
+
+    assert mocked_graph.get_tensor_by_name.call_count == 2
+    mocked_graph.get_tensor_by_name.assert_any_call("input:0")
+    mocked_graph.get_tensor_by_name.assert_any_call("output:0")
+
+    mocked_session.run.assert_called_once_with(
+        "OUTPUT", feed_dict={"INPUT": mocker.ANY}
+    )
+
+    # Numpy arrays cannot be compared directly
+    # https://github.com/pytest-dev/pytest/issues/5347
+    args = mocked_session.run.call_args_list
+    assert np.all(args[0][1]["feed_dict"]["INPUT"] == np.ones((1, 576, 720, 3)))

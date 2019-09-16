@@ -406,7 +406,7 @@ def optimize_model(
                 logger.debug("Start processing batch #{}.".format(index))
                 start_time_batch = time.time()
 
-                images = get_next_batch(
+                images = load_dataset_batch(
                     index, training_images,
                     batch_size=batch_size or BATCH_SIZE,
                     batch_shape=batch_shape or BATCH_SHAPE
@@ -661,10 +661,18 @@ def compute_total_variation_cost(output_node, batch_size, tv_weight=TV_WEIGHT):
     return cost
 
 
-def get_next_batch(
-    index, training_images, batch_size=BATCH_SIZE, batch_shape=BATCH_SHAPE
+def load_dataset_batch(
+    index, training_images, batch_size=None, batch_shape=None
 ):
     """Return list of images for current batch *index*.
+
+    Usage example::
+
+        >>> for index in range(len(training_images) // batch_size)):
+        ...     images = load_dataset_batch(
+        ...         index, training_images,
+        ...         batch_size=batch_size
+        ...     )
 
     :param index: index number of the current batch to load.
 
@@ -679,6 +687,9 @@ def get_next_batch(
     :return: 4-dimensional matrix storing images in batch.
 
     """
+    batch_size = batch_size or BATCH_SIZE
+    batch_shape = batch_shape or BATCH_SHAPE
+
     current = index * batch_size
     step = current + batch_size
 
@@ -688,7 +699,7 @@ def get_next_batch(
     for index, image_path in enumerate(training_images[current:step]):
         images[index] = stylish.filesystem.load_image(
             image_path, image_size=batch_shape
-        ).astype(np.float32)
+        )
 
     return images
 
@@ -749,7 +760,7 @@ def infer_model(model_path, input_path):
 
         start_time = time.time()
 
-        predictions = session.run(
+        images = session.run(
             output_node, feed_dict={input_node: np.array([image])}
         )
 
@@ -760,4 +771,4 @@ def infer_model(model_path, input_path):
             )
         )
 
-        return predictions[0]
+        return images[0]
