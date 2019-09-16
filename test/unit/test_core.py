@@ -86,6 +86,24 @@ def mocked_core_compute_cost(mocker):
 
 
 @pytest.fixture()
+def mocked_core_compute_content_cost(mocker):
+    """Return mocked :func:`stylish.core.compute_content_cost`."""
+    return mocker.patch("stylish.core.compute_content_cost")
+
+
+@pytest.fixture()
+def mocked_core_compute_style_cost(mocker):
+    """Return mocked :func:`stylish.core.compute_style_cost`."""
+    return mocker.patch("stylish.core.compute_style_cost")
+
+
+@pytest.fixture()
+def mocked_core_compute_total_variation_cost(mocker):
+    """Return mocked :func:`stylish.core.compute_total_variation_cost`."""
+    return mocker.patch("stylish.core.compute_total_variation_cost")
+
+
+@pytest.fixture()
 def mocked_core_load_dataset_batch(mocker):
     """Return mocked :func:`stylish.core.load_dataset_batch`."""
     return mocker.patch("stylish.core.load_dataset_batch")
@@ -440,11 +458,11 @@ def test_optimize_image(
             [name for name, _ in stylish.vgg.STYLE_LAYERS]
         ),
         (
-            {"epoch_number": 99},
+            {"epoch_number": 4},
             stylish.core.LEARNING_RATE,
             stylish.core.BATCH_SIZE,
             stylish.core.BATCH_SHAPE,
-            99,
+            4,
             stylish.core.CONTENT_WEIGHT,
             stylish.core.STYLE_WEIGHT,
             stylish.core.TV_WEIGHT,
@@ -636,6 +654,122 @@ def test_optimize_model(
 
     mocked_core_save_model.assert_called_once_with(
         mocked_session, input_node, output_node, "/path/to/output_model"
+    )
+
+
+@pytest.mark.parametrize(
+    "options, batch_size, content_weight, style_weight, tv_weight, "
+    "content_layer, style_layer_names",
+    [
+        (
+            {},
+            stylish.core.BATCH_SIZE,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
+        ),
+        (
+            {"batch_size": 1},
+            1,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
+        ),
+        (
+            {"content_weight": 0.99},
+            stylish.core.BATCH_SIZE,
+            0.99,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
+        ),
+        (
+            {"style_weight": 0.99},
+            stylish.core.BATCH_SIZE,
+            stylish.core.CONTENT_WEIGHT,
+            0.99,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
+        ),
+        (
+            {"tv_weight": 0.99},
+            stylish.core.BATCH_SIZE,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            0.99,
+            stylish.vgg.CONTENT_LAYER,
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
+        ),
+        (
+            {"content_layer": "__CONTENT_LAYER__"},
+            stylish.core.BATCH_SIZE,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            "__CONTENT_LAYER__",
+            [name for name, _ in stylish.vgg.STYLE_LAYERS]
+        ),
+        (
+            {"style_layer_names": ["__LAYER_1__", "__LAYER_2__"]},
+            stylish.core.BATCH_SIZE,
+            stylish.core.CONTENT_WEIGHT,
+            stylish.core.STYLE_WEIGHT,
+            stylish.core.TV_WEIGHT,
+            stylish.vgg.CONTENT_LAYER,
+            ["__LAYER_1__", "__LAYER_2__"]
+        )
+    ],
+    ids=[
+        "simple",
+        "with-batch-size",
+        "with-content-weight",
+        "with-style-weight",
+        "with-tv-weight",
+        "with-content-layer",
+        "with-style-layer-names",
+    ]
+)
+@pytest.mark.usefixtures("mocked_tf_summary")
+def test_compute_cost(
+    options, batch_size, content_weight, style_weight, tv_weight, content_layer,
+    style_layer_names, mocked_core_compute_content_cost,
+    mocked_core_compute_style_cost, mocked_core_compute_total_variation_cost
+):
+    """Compute total cost."""
+
+    # Run command to test
+    cost = stylish.core.compute_cost(
+        "__SESSION__", "__STYLE__", "__OUTPUT_NODE__", **options
+    )
+    assert cost == (
+        mocked_core_compute_content_cost.return_value
+        + mocked_core_compute_style_cost.return_value
+        + mocked_core_compute_total_variation_cost.return_value
+    )
+
+    mocked_core_compute_content_cost.assert_called_once_with(
+        "__SESSION__",
+        "vgg1/{}:0".format(content_layer),
+        "vgg2/{}:0".format(content_layer),
+        batch_size=batch_size,
+        content_weight=content_weight
+    )
+
+    mocked_core_compute_style_cost.assert_called_once_with(
+        "__SESSION__", "__STYLE__", style_layer_names,
+        ["vgg2/{}:0".format(name) for name in style_layer_names],
+        batch_size=batch_size,
+        style_weight=style_weight
+    )
+
+    mocked_core_compute_total_variation_cost.assert_called_once_with(
+        "__OUTPUT_NODE__", batch_size, tv_weight=tv_weight
     )
 
 

@@ -454,10 +454,9 @@ def optimize_model(
 
 
 def compute_cost(
-    session, style_mapping, output_node, batch_size=BATCH_SIZE,
-    content_weight=CONTENT_WEIGHT, style_weight=STYLE_WEIGHT,
-    tv_weight=TV_WEIGHT, content_layer=None, style_layer_names=None,
-    input_namespace="vgg1", output_namespace="vgg2"
+    session, style_mapping, output_node, batch_size=None, content_weight=None,
+    style_weight=None, tv_weight=None, content_layer=None,
+    style_layer_names=None, input_namespace="vgg1", output_namespace="vgg2"
 ):
     """Compute total cost.
 
@@ -508,8 +507,8 @@ def compute_cost(
         session,
         "{}/{}:0".format(input_namespace, content_layer),
         "{}/{}:0".format(output_namespace, content_layer),
-        batch_size=batch_size,
-        content_weight=content_weight
+        batch_size=batch_size or BATCH_SIZE,
+        content_weight=content_weight or CONTENT_WEIGHT
     )
 
     # Compute style cost.
@@ -520,14 +519,14 @@ def compute_cost(
             "{}/{}:0".format(output_namespace, name)
             for name in style_layer_names
         ],
-        batch_size=batch_size,
-        style_weight=style_weight
+        batch_size=batch_size or BATCH_SIZE,
+        style_weight=style_weight or STYLE_WEIGHT
     )
 
     # Compute total variation cost.
     total_variation_cost = compute_total_variation_cost(
-        output_node, batch_size,
-        tv_weight=tv_weight
+        output_node, batch_size or BATCH_SIZE,
+        tv_weight=tv_weight or TV_WEIGHT
     )
 
     cost = content_cost + style_cost + total_variation_cost
