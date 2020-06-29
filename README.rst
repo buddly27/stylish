@@ -3,13 +3,15 @@ Stylish
 #######
 
 .. image:: https://img.shields.io/pypi/v/stylish.svg
-        :target: https://pypi.python.org/pypi/stylish
+    :target: https://pypi.python.org/pypi/stylish
 
 .. image:: https://readthedocs.org/projects/stylish/badge/?version=stable
-        :target: http://stylish.readthedocs.io/en/stable
-        :alt: Documentation Status
+    :target: http://stylish.readthedocs.io/en/stable
+    :alt: Documentation Status
 
 Style transfer using Deep Neural Network.
+
+.. image:: ./demo.png
 
 **********
 References
